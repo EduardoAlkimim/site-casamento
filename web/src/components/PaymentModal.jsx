@@ -38,7 +38,8 @@ async function tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf }) {
 
   const [expMonth, expYear] = expiry.split('/')
 
-  const cardToken = await mp.fields.createCardToken({
+  // mp.createCardToken é o método correto do SDK v2 para tokenização direta
+  const cardToken = await mp.createCardToken({
     cardNumber: cardNumber.replace(/\s/g, ''),
     cardholderName: cardName,
     cardExpirationMonth: expMonth,
