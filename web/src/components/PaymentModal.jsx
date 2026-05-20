@@ -18,27 +18,37 @@ function formatExpiry(v) {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+// Carrega o SDK oficial do Mercado Pago via CDN (necessário para antifraude correto)
+function loadMercadoPagoSDK() {
+  return new Promise((resolve, reject) => {
+    if (window.MercadoPago) return resolve(window.MercadoPago)
+    const script = document.createElement('script')
+    script.src = 'https://sdk.mercadopago.com/js/v2'
+    script.onload = () => resolve(window.MercadoPago)
+    script.onerror = () => reject(new Error('Falha ao carregar SDK do Mercado Pago'))
+    document.head.appendChild(script)
+  })
+}
+
+// Tokeniza o cartão usando o SDK oficial — inclui device fingerprint para antifraude
 async function tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf }) {
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY
+  const MP = await loadMercadoPagoSDK()
+  const mp = new MP(publicKey)
+
   const [expMonth, expYear] = expiry.split('/')
-  const res = await fetch('https://api.mercadopago.com/v1/card_tokens', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${publicKey}`,
-    },
-    body: JSON.stringify({
-      card_number: cardNumber.replace(/\s/g, ''),
-      cardholder: {
-        name: cardName,
-        identification: { type: 'CPF', number: cpf.replace(/\D/g, '') },
-      },
-      expiration_month: Number(expMonth),
-      expiration_year: Number(`20${expYear}`),
-      security_code: cvv,
-    }),
+
+  const cardToken = await mp.fields.createCardToken({
+    cardNumber: cardNumber.replace(/\s/g, ''),
+    cardholderName: cardName,
+    cardExpirationMonth: expMonth,
+    cardExpirationYear: `20${expYear}`,
+    securityCode: cvv,
+    identificationType: 'CPF',
+    identificationNumber: cpf.replace(/\D/g, ''),
   })
-  return res.json()
+
+  return cardToken
 }
 
 function MsgBlock({ name, valor, gift }) {
@@ -174,9 +184,10 @@ export default function PaymentModal({ gift, amount, onClose }) {
     setLoading(true)
 
     try {
+      // Usa SDK oficial — inclui device fingerprint para o antifraude do MP
       const tokenData = await tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf })
 
-      if (!tokenData.id) {
+      if (!tokenData?.id) {
         const detail = tokenData?.cause?.[0]?.description || 'Dados do cartão inválidos.'
         setFormError(detail)
         setLoading(false)
@@ -230,7 +241,6 @@ export default function PaymentModal({ gift, amount, onClose }) {
 
         {step === 'form' && (
           <>
-            {/* PIX vs Cartão */}
             <div className="pay-method-toggle">
               <button className={`pay-method-btn ${method === 'pix' ? 'on' : 'off'}`} onClick={() => { setMethod('pix'); setFormError('') }}>PIX</button>
               <button className={`pay-method-btn ${method === 'card' ? 'on' : 'off'}`} onClick={() => { setMethod('card'); setFormError('') }}>Cartão</button>
@@ -254,7 +264,6 @@ export default function PaymentModal({ gift, amount, onClose }) {
 
             {method === 'card' && (
               <>
-                {/* Crédito vs Débito */}
                 <div className="pay-method-toggle" style={{ marginBottom: '.5rem' }}>
                   <button className={`pay-method-btn ${cardType === 'credit' ? 'on' : 'off'}`} onClick={() => { setCardType('credit'); setInstallments(1); setFormError('') }}>Crédito</button>
                   <button className={`pay-method-btn ${cardType === 'debit' ? 'on' : 'off'}`} onClick={() => { setCardType('debit'); setInstallments(1); setFormError('') }}>Débito</button>
