@@ -58,7 +58,6 @@ async function tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf }) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Public-Key': publicKey,
       'Authorization': `Bearer ${publicKey}`,
     },
     body: JSON.stringify(body),
