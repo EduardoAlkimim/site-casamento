@@ -18,38 +18,59 @@ function formatExpiry(v) {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Carrega o SDK oficial do Mercado Pago via CDN (necessário para antifraude correto)
+// Injeta o script do MP para gerar o deviceId (fingerprint) — só isso, sem usar os campos hosted
 function loadMercadoPagoSDK() {
-  return new Promise((resolve, reject) => {
-    if (window.MercadoPago) return resolve(window.MercadoPago)
+  return new Promise((resolve) => {
+    if (window.MP_DEVICE_SESSION_ID) return resolve()
     const script = document.createElement('script')
     script.src = 'https://sdk.mercadopago.com/js/v2'
-    script.onload = () => resolve(window.MercadoPago)
-    script.onerror = () => reject(new Error('Falha ao carregar SDK do Mercado Pago'))
+    script.onload = () => resolve()
+    script.onerror = () => resolve() // falha silenciosa, não bloqueia o pagamento
     document.head.appendChild(script)
   })
 }
 
-// Tokeniza o cartão usando o SDK oficial — inclui device fingerprint para antifraude
+// Tokeniza o cartão via API REST diretamente — forma correta sem campos hosted
 async function tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf }) {
   const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY
-  const MP = await loadMercadoPagoSDK()
-  const mp = new MP(publicKey)
-
   const [expMonth, expYear] = expiry.split('/')
 
-  // mp.createCardToken é o método correto do SDK v2 para tokenização direta
-  const cardToken = await mp.createCardToken({
-    cardNumber: cardNumber.replace(/\s/g, ''),
-    cardholderName: cardName,
-    cardExpirationMonth: expMonth,
-    cardExpirationYear: `20${expYear}`,
-    securityCode: cvv,
-    identificationType: 'CPF',
-    identificationNumber: cpf.replace(/\D/g, ''),
+  // Garante que o SDK carregou para gerar o deviceId de fingerprint
+  await loadMercadoPagoSDK()
+
+  const body = {
+    card_number: cardNumber.replace(/\s/g, ''),
+    cardholder: {
+      name: cardName,
+      identification: { type: 'CPF', number: cpf.replace(/\D/g, '') },
+    },
+    expiration_month: Number(expMonth),
+    expiration_year: Number(`20${expYear}`),
+    security_code: cvv,
+  }
+
+  // Adiciona o deviceId ao body se o SDK conseguiu gerar
+  if (window.MP_DEVICE_SESSION_ID) {
+    body.device_id = window.MP_DEVICE_SESSION_ID
+  }
+
+  const res = await fetch('https://api.mercadopago.com/v1/card_tokens', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Public-Key': publicKey,
+      'Authorization': `Bearer ${publicKey}`,
+    },
+    body: JSON.stringify(body),
   })
 
-  return cardToken
+  const data = await res.json()
+
+  if (!res.ok) {
+    throw new Error(data?.cause?.[0]?.description || 'Erro ao tokenizar cartão')
+  }
+
+  return data
 }
 
 function MsgBlock({ name, valor, gift }) {
@@ -187,6 +208,8 @@ export default function PaymentModal({ gift, amount, onClose }) {
     try {
       // Usa SDK oficial — inclui device fingerprint para o antifraude do MP
       const tokenData = await tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf })
+
+      console.log('TOKEN RESPONSE:', JSON.stringify(tokenData, null, 2))
 
       if (!tokenData?.id) {
         const detail = tokenData?.cause?.[0]?.description || 'Dados do cartão inválidos.'
