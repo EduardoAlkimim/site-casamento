@@ -4,6 +4,25 @@ import { supabase } from '../lib/supabase.js'
 
 const router = Router()
 
+// Fallback: busca bandeira pelo BIN quando o SDK não consegue inferir
+async function getPaymentMethodByBin(bin, accessToken) {
+  try {
+    const url = `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}&site_id=MLB`
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    })
+    const data = await res.json()
+    const method = data?.results?.find(m => m.payment_type_id === 'credit_card')
+      || data?.results?.find(m => m.payment_type_id === 'debit_card')
+      || data?.results?.[0]
+    console.log('Fallback BIN lookup — bandeira:', method?.id)
+    return method?.id || null
+  } catch (err) {
+    console.error('Erro no fallback BIN:', err)
+    return null
+  }
+}
+
 router.post('/create', async (req, res) => {
   const {
     gift_id,
@@ -12,11 +31,11 @@ router.post('/create', async (req, res) => {
     amount,
     type,
     payment_method,
-    // Campos do cartão — vindos do CardForm oficial do SDK V2
     card_token,
     issuer_id,
     payment_method_id,
     installments,
+    card_bin, // BIN enviado como fallback pelo frontend
   } = req.body
 
   if (!payer_name || !payer_email || !amount) {
@@ -27,15 +46,21 @@ router.post('/create', async (req, res) => {
     let paymentBody
 
     if (payment_method === 'card' && card_token) {
-      if (!payment_method_id) {
-        return res.status(400).json({ error: 'payment_method_id ausente — token inválido' })
+      // Tenta usar o payment_method_id do SDK; se vier vazio, busca pelo BIN
+      let resolvedMethodId = payment_method_id
+      if (!resolvedMethodId && card_bin) {
+        resolvedMethodId = await getPaymentMethodByBin(card_bin, process.env.MP_ACCESS_TOKEN)
+      }
+
+      if (!resolvedMethodId) {
+        return res.status(400).json({ error: 'Não foi possível identificar a bandeira do cartão' })
       }
 
       paymentBody = {
         transaction_amount: Number(amount),
         description: gift_id ? 'Presente de casamento' : 'Contribuição livre',
         token: card_token,
-        payment_method_id,                          // vem direto do SDK — correto e confiável
+        payment_method_id: resolvedMethodId,
         issuer_id: issuer_id ? Number(issuer_id) : undefined,
         installments: Number(installments) || 1,
         payer: {
@@ -45,7 +70,6 @@ router.post('/create', async (req, res) => {
         },
       }
     } else {
-      // PIX
       paymentBody = {
         transaction_amount: Number(amount),
         description: gift_id ? 'Presente de casamento' : 'Contribuição livre',
