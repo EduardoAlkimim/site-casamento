@@ -370,17 +370,18 @@ export default function PaymentModal({ gift, amount, onClose }) {
                   style={{ ...iframeContainerStyle, padding: '0 1rem', fontSize: '.9rem', fontFamily: 'inherit', border: '1px solid var(--rose-lt)', outline: 'none', height: '42px', width: '100%', borderRadius: '8px', marginBottom: '.8rem', boxSizing: 'border-box' }}
                 />
 
-                {/* CPF */}
-                <div style={iframeRowStyle}>
-                  <div id="mp-identification-type" style={{ ...iframeContainerStyle, display: 'none' }} />
-                  <div id="mp-identification-number" style={iframeContainerStyle} />
-                </div>
+                {/* CPF — número usa iframe (div), tipo usa select nativo */}
+                <select id="mp-identification-type" style={{ display: 'none' }} />
+                <div id="mp-identification-number" style={iframeContainerStyle} />
 
-                {/* Bandeira (hidden — preenchido pelo SDK) */}
-                <div id="mp-issuer" style={{ display: 'none' }} />
+                {/* Bandeira — select nativo, hidden (SDK preenche automaticamente) */}
+                <select id="mp-issuer" style={{ display: 'none' }} />
 
-                {/* Parcelas */}
-                <div id="mp-installments" style={iframeContainerStyle} />
+                {/* Parcelas — select nativo visível */}
+                <select
+                  id="mp-installments"
+                  style={{ ...iframeContainerStyle, padding: '0 1rem', fontSize: '.9rem', fontFamily: 'inherit', border: '1px solid var(--rose-lt)', outline: 'none', height: '42px', width: '100%', borderRadius: '8px', marginBottom: '.8rem', boxSizing: 'border-box', background: 'white', color: 'var(--ink)', appearance: 'auto' }}
+                />
 
                 {!sdkReady && (
                   <p style={{ fontSize: '.78rem', color: 'var(--stone-lt)', textAlign: 'center', margin: '.4rem 0 .8rem' }}>
