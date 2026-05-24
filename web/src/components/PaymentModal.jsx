@@ -1,75 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../lib/api'
 
-function formatCPF(v) {
-  return v.replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
-}
-
-function formatCard(v) {
-  return v.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})/g, '$1 ').trim()
-}
-
-function formatExpiry(v) {
-  return v.replace(/\D/g, '').slice(0, 4).replace(/(\d{2})(\d)/, '$1/$2')
-}
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Injeta o script do MP para gerar o deviceId (fingerprint) — só isso, sem usar os campos hosted
-function loadMercadoPagoSDK() {
-  return new Promise((resolve) => {
-    if (window.MP_DEVICE_SESSION_ID) return resolve()
+// Carrega o SDK oficial do MercadoPago V2 uma única vez
+function loadMPSdk() {
+  return new Promise((resolve, reject) => {
+    if (window.MercadoPago) return resolve(window.MercadoPago)
     const script = document.createElement('script')
     script.src = 'https://sdk.mercadopago.com/js/v2'
-    script.onload = () => resolve()
-    script.onerror = () => resolve() // falha silenciosa, não bloqueia o pagamento
+    script.onload = () => resolve(window.MercadoPago)
+    script.onerror = () => reject(new Error('Falha ao carregar SDK do MercadoPago'))
     document.head.appendChild(script)
   })
-}
-
-// Tokeniza o cartão via API REST diretamente — forma correta sem campos hosted
-async function tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf }) {
-  const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY
-  const [expMonth, expYear] = expiry.split('/')
-
-  // Garante que o SDK carregou para gerar o deviceId de fingerprint
-  await loadMercadoPagoSDK()
-
-  const body = {
-    card_number: cardNumber.replace(/\s/g, ''),
-    cardholder: {
-      name: cardName,
-      identification: { type: 'CPF', number: cpf.replace(/\D/g, '') },
-    },
-    expiration_month: Number(expMonth),
-    expiration_year: Number(`20${expYear}`),
-    security_code: cvv,
-  }
-
-  // Adiciona o deviceId ao body se o SDK conseguiu gerar
-  if (window.MP_DEVICE_SESSION_ID) {
-    body.device_id = window.MP_DEVICE_SESSION_ID
-  }
-
-  const res = await fetch('https://api.mercadopago.com/v1/card_tokens', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${publicKey}`,
-    },
-    body: JSON.stringify(body),
-  })
-
-  const data = await res.json()
-
-  if (!res.ok) {
-    throw new Error(data?.cause?.[0]?.description || 'Erro ao tokenizar cartão')
-  }
-
-  return data
 }
 
 function MsgBlock({ name, valor, gift }) {
@@ -128,31 +71,121 @@ export default function PaymentModal({ gift, amount, onClose }) {
   const [method, setMethod] = useState('pix')
   const [step, setStep] = useState('form')
   const [loading, setLoading] = useState(false)
+  const [sdkReady, setSdkReady] = useState(false)
   const [qrData, setQrData] = useState(null)
   const [statusMsg, setStatusMsg] = useState('')
   const [pixApproved, setPixApproved] = useState(false)
   const [emailError, setEmailError] = useState('')
   const [formError, setFormError] = useState('')
   const pollingRef = useRef(null)
+  const cardFormRef = useRef(null)
+  const mpRef = useRef(null)
 
+  // Dados do pagador (PIX e cartão)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvv, setCvv] = useState('')
-  const [cardName, setCardName] = useState('')
   const [cpf, setCpf] = useState('')
-  const [cardType, setCardType] = useState('credit')
-  const [installments, setInstallments] = useState(1)
-  const [installmentOpts, setInstallmentOpts] = useState([])
 
+  // Dados preenchidos pelo CardForm do SDK (ficam ocultos no iframe do MP)
+  const cardDataRef = useRef({
+    token: null,
+    issuerId: null,
+    paymentMethodId: null,
+    installments: 1,
+  })
+
+  const valorFmt = Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+
+  // Inicializa o SDK e monta o CardForm quando o método for "card"
   useEffect(() => {
-    const bin = cardNumber.replace(/\s/g, '').slice(0, 6)
-    if (bin.length < 6 || !valor || cardType === 'debit') { setInstallmentOpts([]); return }
-    api.get(`/payments/installments?amount=${valor}&bin=${bin}`)
-      .then(r => setInstallmentOpts(r.data))
-      .catch(() => setInstallmentOpts([]))
-  }, [cardNumber, valor, cardType])
+    if (method !== 'card') {
+      // Desmonta o CardForm se existir
+      if (cardFormRef.current) {
+        try { cardFormRef.current.unmount() } catch {}
+        cardFormRef.current = null
+      }
+      return
+    }
+
+    let cancelled = false
+
+    async function initCardForm() {
+      try {
+        const MercadoPago = await loadMPSdk()
+        if (cancelled) return
+
+        const mp = new MercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY, { locale: 'pt-BR' })
+        mpRef.current = mp
+
+        // Aguarda o DOM renderizar os containers dos iframes
+        await new Promise(r => setTimeout(r, 100))
+        if (cancelled) return
+
+        const cardForm = mp.cardForm({
+          amount: String(valor),
+          iframe: true,
+          form: {
+            id: 'mp-card-form',
+            cardNumber: { id: 'mp-card-number', placeholder: 'Número do cartão' },
+            expirationDate: { id: 'mp-expiration-date', placeholder: 'MM/AA' },
+            securityCode: { id: 'mp-security-code', placeholder: 'CVV' },
+            cardholderName: { id: 'mp-cardholder-name', placeholder: 'Nome no cartão' },
+            issuer: { id: 'mp-issuer', placeholder: 'Bandeira' },
+            installments: { id: 'mp-installments', placeholder: 'Parcelas' },
+            identificationType: { id: 'mp-identification-type', placeholder: 'Tipo' },
+            identificationNumber: { id: 'mp-identification-number', placeholder: 'CPF' },
+          },
+          callbacks: {
+            onFormMounted: (error) => {
+              if (error) {
+                console.error('CardForm mount error:', error)
+                return
+              }
+              if (!cancelled) setSdkReady(true)
+            },
+            onSubmit: async (event) => {
+              event.preventDefault()
+              const {
+                paymentMethodId,
+                issuerId,
+                cardholderEmail,
+                token,
+                installments,
+                identificationNumber,
+                identificationTypes,
+              } = cardForm.getCardFormData()
+
+              cardDataRef.current = {
+                token,
+                issuerId,
+                paymentMethodId,
+                installments: Number(installments) || 1,
+              }
+            },
+            onFetching: (resource) => {
+              setLoading(true)
+              return () => setLoading(false)
+            },
+          },
+        })
+
+        cardFormRef.current = cardForm
+      } catch (err) {
+        console.error('Erro ao inicializar CardForm:', err)
+        if (!cancelled) setFormError('Erro ao carregar o formulário de cartão. Recarregue a página.')
+      }
+    }
+
+    initCardForm()
+    return () => {
+      cancelled = true
+      if (cardFormRef.current) {
+        try { cardFormRef.current.unmount() } catch {}
+        cardFormRef.current = null
+      }
+      setSdkReady(false)
+    }
+  }, [method, valor])
 
   const startPolling = (paymentId) => {
     clearInterval(pollingRef.current)
@@ -169,11 +202,11 @@ export default function PaymentModal({ gift, amount, onClose }) {
 
   useEffect(() => () => clearInterval(pollingRef.current), [])
 
+  // --- PIX ---
   const handlePix = async () => {
     setFormError('')
     if (!name.trim()) { setFormError('Preencha seu nome completo'); return }
-    if (!email.trim()) { setFormError('Preencha seu e-mail'); return }
-    if (!EMAIL_REGEX.test(email)) { setEmailError('Digite um e-mail válido'); return }
+    if (!email.trim() || !EMAIL_REGEX.test(email)) { setEmailError('Digite um e-mail válido'); return }
     setEmailError('')
     setLoading(true)
     try {
@@ -195,29 +228,34 @@ export default function PaymentModal({ gift, amount, onClose }) {
     }
   }
 
+  // --- CARTÃO: dispara o submit do CardForm e coleta o token gerado pelo SDK ---
   const handleCard = async () => {
     setFormError('')
-    if (!name.trim() || !email.trim() || !cardNumber || !expiry || !cvv || !cardName || !cpf) {
-      setFormError('Preencha todos os campos'); return
-    }
-    if (!EMAIL_REGEX.test(email)) { setEmailError('Digite um e-mail válido'); return }
+    if (!name.trim()) { setFormError('Preencha seu nome completo'); return }
+    if (!email.trim() || !EMAIL_REGEX.test(email)) { setEmailError('Digite um e-mail válido'); return }
     setEmailError('')
+
+    if (!cardFormRef.current) {
+      setFormError('Formulário não carregado. Aguarde e tente novamente.')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Usa SDK oficial — inclui device fingerprint para o antifraude do MP
-      const tokenData = await tokenizeCard({ cardNumber, expiry, cvv, cardName, cpf })
+      // Submete o CardForm — o SDK tokeniza e chama onSubmit internamente
+      await cardFormRef.current.submit()
 
-      console.log('TOKEN RESPONSE:', JSON.stringify(tokenData, null, 2))
+      // Aguarda o token ser preenchido pelo callback onSubmit
+      await new Promise(r => setTimeout(r, 800))
 
-      if (!tokenData?.id) {
-        const detail = tokenData?.cause?.[0]?.description || 'Dados do cartão inválidos.'
-        setFormError(detail)
+      const { token, issuerId, paymentMethodId, installments } = cardDataRef.current
+
+      if (!token) {
+        setFormError('Verifique os dados do cartão e tente novamente.')
         setLoading(false)
         return
       }
-
-      const bin = cardNumber.replace(/\s/g, '').slice(0, 6)
 
       const { data } = await api.post('/payments/create', {
         gift_id: gift?.id || null,
@@ -226,11 +264,10 @@ export default function PaymentModal({ gift, amount, onClose }) {
         amount: valor,
         type: gift ? 'gift' : 'free',
         payment_method: 'card',
-        card_token: tokenData.id,
-        card_bin: bin,
-        card_type: cardType,
-        installments: cardType === 'debit' ? 1 : installments,
-        payer_cpf: cpf,
+        card_token: token,
+        issuer_id: issuerId,
+        payment_method_id: paymentMethodId,
+        installments,
       })
 
       if (data.status === 'approved') {
@@ -251,7 +288,21 @@ export default function PaymentModal({ gift, amount, onClose }) {
     }
   }
 
-  const valorFmt = Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+  // Estilos dos iframes do CardForm (o SDK injeta iframes nos containers abaixo)
+  const iframeContainerStyle = {
+    width: '100%',
+    height: '42px',
+    border: '1px solid var(--rose-lt)',
+    borderRadius: '8px',
+    marginBottom: '.8rem',
+    overflow: 'hidden',
+    background: 'white',
+  }
+  const iframeRowStyle = {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '.6rem',
+  }
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -264,12 +315,24 @@ export default function PaymentModal({ gift, amount, onClose }) {
 
         {step === 'form' && (
           <>
+            {/* Toggle PIX / Cartão */}
             <div className="pay-method-toggle">
-              <button className={`pay-method-btn ${method === 'pix' ? 'on' : 'off'}`} onClick={() => { setMethod('pix'); setFormError('') }}>PIX</button>
-              <button className={`pay-method-btn ${method === 'card' ? 'on' : 'off'}`} onClick={() => { setMethod('card'); setFormError('') }}>Cartão</button>
+              <button
+                className={`pay-method-btn ${method === 'pix' ? 'on' : 'off'}`}
+                onClick={() => { setMethod('pix'); setFormError(''); setSdkReady(false) }}
+              >PIX</button>
+              <button
+                className={`pay-method-btn ${method === 'card' ? 'on' : 'off'}`}
+                onClick={() => { setMethod('card'); setFormError('') }}
+              >Cartão</button>
             </div>
 
-            <input placeholder="Seu nome completo" value={name} onChange={e => { setName(e.target.value); setFormError('') }} />
+            {/* Campos comuns */}
+            <input
+              placeholder="Seu nome completo"
+              value={name}
+              onChange={e => { setName(e.target.value); setFormError('') }}
+            />
             <input
               placeholder="Seu e-mail"
               type="email"
@@ -277,52 +340,64 @@ export default function PaymentModal({ gift, amount, onClose }) {
               onChange={e => { setEmail(e.target.value); setEmailError(''); setFormError('') }}
               style={emailError ? { borderColor: '#e05c5c' } : {}}
             />
-            {emailError && <p style={{ color: '#e05c5c', fontSize: '.8rem', margin: '-8px 0 4px' }}>{emailError}</p>}
+            {emailError && (
+              <p style={{ color: '#e05c5c', fontSize: '.8rem', margin: '-8px 0 4px' }}>{emailError}</p>
+            )}
 
+            {/* PIX */}
             {method === 'pix' && (
               <button onClick={handlePix} disabled={loading}>
                 {loading ? 'Gerando...' : 'Gerar QR Code PIX'}
               </button>
             )}
 
+            {/* CARTÃO — CardForm com iframes do SDK oficial */}
             {method === 'card' && (
-              <>
-                <div className="pay-method-toggle" style={{ marginBottom: '.5rem' }}>
-                  <button className={`pay-method-btn ${cardType === 'credit' ? 'on' : 'off'}`} onClick={() => { setCardType('credit'); setInstallments(1); setFormError('') }}>Crédito</button>
-                  <button className={`pay-method-btn ${cardType === 'debit' ? 'on' : 'off'}`} onClick={() => { setCardType('debit'); setInstallments(1); setFormError('') }}>Débito</button>
+              <form id="mp-card-form" onSubmit={e => e.preventDefault()} style={{ width: '100%', marginTop: '.4rem' }}>
+                {/* Número do cartão */}
+                <div id="mp-card-number" style={iframeContainerStyle} />
+
+                {/* Validade + CVV */}
+                <div style={iframeRowStyle}>
+                  <div id="mp-expiration-date" style={iframeContainerStyle} />
+                  <div id="mp-security-code" style={iframeContainerStyle} />
                 </div>
 
-                <input placeholder="Número do cartão" value={cardNumber}
-                  onChange={e => { setCardNumber(formatCard(e.target.value)); setFormError('') }} inputMode="numeric" />
-                <div className="card-row">
-                  <input placeholder="Validade MM/AA" value={expiry}
-                    onChange={e => setExpiry(formatExpiry(e.target.value))} inputMode="numeric" />
-                  <input placeholder="CVV" value={cvv}
-                    onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" />
-                </div>
-                <input placeholder="Nome no cartão" value={cardName}
-                  onChange={e => setCardName(e.target.value.toUpperCase())} />
-                <input placeholder="CPF do titular" value={cpf}
-                  onChange={e => setCpf(formatCPF(e.target.value))} inputMode="numeric" />
+                {/* Nome no cartão */}
+                <div id="mp-cardholder-name" style={iframeContainerStyle} />
 
-                {cardType === 'credit' && installmentOpts.length > 0 && (
-                  <select className="install-select" value={installments}
-                    onChange={e => setInstallments(Number(e.target.value))}>
-                    {installmentOpts.map(opt => (
-                      <option key={opt.installments} value={opt.installments}>
-                        {opt.recommended_message}
-                      </option>
-                    ))}
-                  </select>
+                {/* CPF */}
+                <div style={iframeRowStyle}>
+                  <div id="mp-identification-type" style={{ ...iframeContainerStyle, display: 'none' }} />
+                  <div id="mp-identification-number" style={iframeContainerStyle} />
+                </div>
+
+                {/* Bandeira (hidden — preenchido pelo SDK) */}
+                <div id="mp-issuer" style={{ display: 'none' }} />
+
+                {/* Parcelas */}
+                <div id="mp-installments" style={iframeContainerStyle} />
+
+                {!sdkReady && (
+                  <p style={{ fontSize: '.78rem', color: 'var(--stone-lt)', textAlign: 'center', margin: '.4rem 0 .8rem' }}>
+                    ⏳ Carregando formulário seguro...
+                  </p>
                 )}
 
-                <button onClick={handleCard} disabled={loading}>
+                <button
+                  type="button"
+                  onClick={handleCard}
+                  disabled={loading || !sdkReady}
+                  style={{ width: '100%', marginTop: '.4rem' }}
+                >
                   {loading ? 'Processando...' : `Pagar R$ ${valorFmt}`}
                 </button>
-              </>
+              </form>
             )}
 
-            {formError && <p style={{ color: '#e05c5c', fontSize: '.85rem', textAlign: 'center', marginTop: '.5rem' }}>{formError}</p>}
+            {formError && (
+              <p style={{ color: '#e05c5c', fontSize: '.85rem', textAlign: 'center', marginTop: '.5rem' }}>{formError}</p>
+            )}
           </>
         )}
 
@@ -330,10 +405,17 @@ export default function PaymentModal({ gift, amount, onClose }) {
           <>
             <div className="modal-icon">✅</div>
             <h3>Escaneie o QR Code</h3>
-            <img src={`data:image/png;base64,${qrData.qr_code_base64}`} alt="QR Code PIX"
-              style={{ width: '180px', margin: '1rem auto', display: 'block' }} />
+            <img
+              src={`data:image/png;base64,${qrData.qr_code_base64}`}
+              alt="QR Code PIX"
+              style={{ width: '180px', margin: '1rem auto', display: 'block' }}
+            />
             <p>Ou copie o código PIX:</p>
-            <div className="pix-box" onClick={() => navigator.clipboard.writeText(qrData.qr_code)} title="Clique para copiar">
+            <div
+              className="pix-box"
+              onClick={() => navigator.clipboard.writeText(qrData.qr_code)}
+              title="Clique para copiar"
+            >
               {qrData.qr_code.slice(0, 60)}...
             </div>
             {!pixApproved ? (
