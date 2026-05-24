@@ -363,8 +363,12 @@ export default function PaymentModal({ gift, amount, onClose }) {
                   <div id="mp-security-code" style={iframeContainerStyle} />
                 </div>
 
-                {/* Nome no cartão */}
-                <div id="mp-cardholder-name" style={iframeContainerStyle} />
+                {/* Nome no cartão — SDK exige input real, não div */}
+                <input
+                  id="mp-cardholder-name"
+                  placeholder="Nome no cartão"
+                  style={{ ...iframeContainerStyle, padding: '0 1rem', fontSize: '.9rem', fontFamily: 'inherit', border: '1px solid var(--rose-lt)', outline: 'none', height: '42px', width: '100%', borderRadius: '8px', marginBottom: '.8rem', boxSizing: 'border-box' }}
+                />
 
                 {/* CPF */}
                 <div style={iframeRowStyle}>
