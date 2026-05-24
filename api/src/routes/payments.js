@@ -4,29 +4,19 @@ import { supabase } from '../lib/supabase.js'
 
 const router = Router()
 
-async function getPaymentMethodId(bin, cardType) {
-  try {
-    const url = `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}&site_id=MLB`
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` }
-    })
-    const data = await res.json()
-    const typeFilter = cardType === 'debit' ? 'debit_card' : 'credit_card'
-    const method = data?.results?.find(m => m.payment_type_id === typeFilter)
-      || data?.results?.[0]
-    console.log('Bandeira detectada:', method?.id, '| Tipo:', method?.payment_type_id)
-    return method?.id || 'visa'
-  } catch (err) {
-    console.error('Erro ao buscar bandeira:', err)
-    return 'visa'
-  }
-}
-
 router.post('/create', async (req, res) => {
   const {
-    gift_id, payer_name, payer_email, amount, type,
-    payment_method, installments, payer_cpf,
-    card_token, card_bin, card_type,
+    gift_id,
+    payer_name,
+    payer_email,
+    amount,
+    type,
+    payment_method,
+    // Campos do cartão — vindos do CardForm oficial do SDK V2
+    card_token,
+    issuer_id,
+    payment_method_id,
+    installments,
   } = req.body
 
   if (!payer_name || !payer_email || !amount) {
@@ -37,27 +27,25 @@ router.post('/create', async (req, res) => {
     let paymentBody
 
     if (payment_method === 'card' && card_token) {
-      const paymentMethodId = card_bin
-        ? await getPaymentMethodId(card_bin, card_type || 'credit')
-        : 'visa'
+      if (!payment_method_id) {
+        return res.status(400).json({ error: 'payment_method_id ausente — token inválido' })
+      }
 
       paymentBody = {
         transaction_amount: Number(amount),
         description: gift_id ? 'Presente de casamento' : 'Contribuição livre',
         token: card_token,
-        payment_method_id: paymentMethodId,
-        installments: card_type === 'debit' ? 1 : (Number(installments) || 1),
+        payment_method_id,                          // vem direto do SDK — correto e confiável
+        issuer_id: issuer_id ? Number(issuer_id) : undefined,
+        installments: Number(installments) || 1,
         payer: {
           email: payer_email,
           first_name: payer_name.split(' ')[0],
           last_name: payer_name.split(' ').slice(1).join(' ') || '-',
-          identification: {
-            type: 'CPF',
-            number: payer_cpf?.replace(/\D/g, ''),
-          },
         },
       }
     } else {
+      // PIX
       paymentBody = {
         transaction_amount: Number(amount),
         description: gift_id ? 'Presente de casamento' : 'Contribuição livre',
@@ -112,21 +100,6 @@ router.get('/status/:id', async (req, res) => {
     res.json({ status: data.status })
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar status' })
-  }
-})
-
-router.get('/installments', async (req, res) => {
-  const { amount, bin } = req.query
-  if (!amount || !bin) return res.status(400).json({ error: 'amount e bin obrigatórios' })
-  try {
-    const url = `https://api.mercadopago.com/v1/payment_methods/installments?amount=${amount}&bin=${bin}`
-    const resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` }
-    })
-    const data = await resp.json()
-    res.json(data?.[0]?.payer_costs || [])
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar parcelamento' })
   }
 })
 
