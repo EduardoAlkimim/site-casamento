@@ -53,7 +53,7 @@ function MsgBlock({ name, valor, gift }) {
         rows={4}
         style={{ width: '100%', padding: '.75rem', borderRadius: '8px', border: '1px solid #f2dede', fontFamily: 'inherit', fontSize: '.9rem', resize: 'vertical', outline: 'none', color: '#1a1410', boxSizing: 'border-box' }}
       />
-      <button onClick={handleSend} style={{ marginTop: '.5rem', width: '100%', padding: '.75rem', background: 'var(--rose)', color: '#fff', border: 'none', borderRadius: '8px', fontFamily: 'inherit', fontSize: '.7rem', letterSpacing: '.16em', textTransform: 'uppercase', cursor: 'pointer' }}>
+      <button onClick={handleSend} style={{ marginTop: '.5rem', width: '100%', padding: '.75rem', background: 'var(--rose)', color: '#fff', border: 'none', borderRadius: '8px', fontFamily: 'inherit', fontSize: '.7rem', letterSpacing: '.16em', textTransform: 'uppercase', cursor: 'pointer', transition: 'background .2s' }}>
         Enviar mensagem 💌
       </button>
     </div>
@@ -366,7 +366,7 @@ export default function PaymentModal({ gift, amount, onClose }) {
 
             {/* PIX */}
             {method === 'pix' && (
-              <button onClick={handlePix} disabled={loading}>
+              <button className="btn-modal-primary" onClick={handlePix} disabled={loading}>
                 {loading ? 'Gerando...' : 'Gerar QR Code PIX'}
               </button>
             )}
@@ -411,9 +411,9 @@ export default function PaymentModal({ gift, amount, onClose }) {
 
                 <button
                   type="button"
+                  className="btn-pay"
                   onClick={handleCard}
                   disabled={loading || !sdkReady}
-                  style={{ width: '100%', marginTop: '.4rem' }}
                 >
                   {loading ? 'Processando...' : `Pagar R$ ${valorFmt}`}
                 </button>
