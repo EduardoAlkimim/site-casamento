@@ -93,6 +93,7 @@ export default function PaymentModal({ gift, amount, onClose }) {
     paymentMethodId: null,
     installments: 1,
   })
+  const binRef = useRef('')
 
   const valorFmt = Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
 
@@ -150,7 +151,6 @@ export default function PaymentModal({ gift, amount, onClose }) {
                 issuerId,
                 token,
                 installments,
-                bin,
               } = cardForm.getCardFormData()
 
               cardDataRef.current = {
@@ -158,8 +158,11 @@ export default function PaymentModal({ gift, amount, onClose }) {
                 issuerId,
                 paymentMethodId,
                 installments: Number(installments) || 1,
-                bin,
+                bin: binRef.current,
               }
+            },
+            onBinChange: (bin) => {
+              if (bin) binRef.current = bin
             },
             onFetching: (resource) => {
               setLoading(true)
