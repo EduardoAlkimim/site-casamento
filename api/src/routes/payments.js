@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase.js'
 
 const router = Router()
 
-// Fallback: busca bandeira pelo BIN quando o SDK não consegue inferir
 async function getPaymentMethodByBin(bin, accessToken) {
   try {
     const url = `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}&site_id=MLB`
@@ -24,19 +23,7 @@ async function getPaymentMethodByBin(bin, accessToken) {
 }
 
 router.post('/create', async (req, res) => {
-  const {
-    gift_id,
-    payer_name,
-    payer_email,
-    amount,
-    type,
-    payment_method,
-    card_token,
-    issuer_id,
-    payment_method_id,
-    installments,
-    card_bin, // BIN enviado como fallback pelo frontend
-  } = req.body
+  const { gift_id, payer_name, payer_email, amount, type, payment_method, card_token, issuer_id, payment_method_id, installments, card_bin } = req.body
 
   if (!payer_name || !payer_email || !amount) {
     return res.status(400).json({ error: 'Campos obrigatórios faltando' })
@@ -46,16 +33,13 @@ router.post('/create', async (req, res) => {
     let paymentBody
 
     if (payment_method === 'card' && card_token) {
-      // Tenta usar o payment_method_id do SDK; se vier vazio, busca pelo BIN
       let resolvedMethodId = payment_method_id
       if (!resolvedMethodId && card_bin) {
         resolvedMethodId = await getPaymentMethodByBin(card_bin, process.env.MP_ACCESS_TOKEN)
       }
-
       if (!resolvedMethodId) {
         return res.status(400).json({ error: 'Não foi possível identificar a bandeira do cartão' })
       }
-
       paymentBody = {
         transaction_amount: Number(amount),
         description: gift_id ? 'Presente de casamento' : 'Contribuição livre',
@@ -74,10 +58,7 @@ router.post('/create', async (req, res) => {
         transaction_amount: Number(amount),
         description: gift_id ? 'Presente de casamento' : 'Contribuição livre',
         payment_method_id: 'pix',
-        payer: {
-          email: payer_email,
-          first_name: payer_name,
-        },
+        payer: { email: payer_email, first_name: payer_name },
       }
     }
 
@@ -94,11 +75,7 @@ router.post('/create', async (req, res) => {
     })
 
     if (payment_method === 'card') {
-      return res.json({
-        status: payment.status,
-        status_detail: payment.status_detail,
-        payment_id: payment.id,
-      })
+      return res.json({ status: payment.status, status_detail: payment.status_detail, payment_id: payment.id })
     }
 
     return res.json({
@@ -115,11 +92,7 @@ router.post('/create', async (req, res) => {
 
 router.get('/status/:id', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('status')
-      .eq('mp_payment_id', req.params.id)
-      .single()
+    const { data, error } = await supabase.from('payments').select('status').eq('mp_payment_id', req.params.id).single()
     if (error) return res.status(404).json({ error: 'Não encontrado' })
     res.json({ status: data.status })
   } catch (err) {
