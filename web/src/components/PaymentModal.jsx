@@ -148,11 +148,9 @@ export default function PaymentModal({ gift, amount, onClose }) {
               const {
                 paymentMethodId,
                 issuerId,
-                cardholderEmail,
                 token,
                 installments,
-                identificationNumber,
-                identificationTypes,
+                bin,
               } = cardForm.getCardFormData()
 
               cardDataRef.current = {
@@ -160,6 +158,7 @@ export default function PaymentModal({ gift, amount, onClose }) {
                 issuerId,
                 paymentMethodId,
                 installments: Number(installments) || 1,
+                bin,
               }
             },
             onFetching: (resource) => {
@@ -268,6 +267,7 @@ export default function PaymentModal({ gift, amount, onClose }) {
         issuer_id: issuerId,
         payment_method_id: paymentMethodId,
         installments,
+        card_bin: bin,
       })
 
       if (data.status === 'approved') {
