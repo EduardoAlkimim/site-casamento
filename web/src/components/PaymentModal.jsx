@@ -251,7 +251,7 @@ export default function PaymentModal({ gift, amount, onClose }) {
       // Aguarda o token ser preenchido pelo callback onSubmit
       await new Promise(r => setTimeout(r, 800))
 
-      const { token, issuerId, paymentMethodId, installments } = cardDataRef.current
+      const { token, issuerId, paymentMethodId, installments, bin } = cardDataRef.current
 
       if (!token) {
         setFormError('Verifique os dados do cartão e tente novamente.')
