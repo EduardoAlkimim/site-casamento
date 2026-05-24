@@ -288,20 +288,37 @@ export default function PaymentModal({ gift, amount, onClose }) {
     }
   }
 
-  // Estilos dos iframes do CardForm (o SDK injeta iframes nos containers abaixo)
+  // Containers dos iframes do CardForm — overflow: visible é obrigatório
+  // para que o iframe interno seja clicável e receba foco
   const iframeContainerStyle = {
     width: '100%',
     height: '42px',
     border: '1px solid var(--rose-lt)',
     borderRadius: '8px',
     marginBottom: '.8rem',
-    overflow: 'hidden',
+    overflow: 'visible',
     background: 'white',
+    position: 'relative',
   }
   const iframeRowStyle = {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '.6rem',
+  }
+  // Campos nativos (input/select) que o SDK não usa iframe
+  const nativeFieldStyle = {
+    width: '100%',
+    height: '42px',
+    padding: '0 1rem',
+    fontSize: '.9rem',
+    fontFamily: 'inherit',
+    border: '1px solid var(--rose-lt)',
+    borderRadius: '8px',
+    marginBottom: '.8rem',
+    outline: 'none',
+    boxSizing: 'border-box',
+    background: 'white',
+    color: 'var(--ink)',
   }
 
   return (
@@ -367,20 +384,20 @@ export default function PaymentModal({ gift, amount, onClose }) {
                 <input
                   id="mp-cardholder-name"
                   placeholder="Nome no cartão"
-                  style={{ ...iframeContainerStyle, padding: '0 1rem', fontSize: '.9rem', fontFamily: 'inherit', border: '1px solid var(--rose-lt)', outline: 'none', height: '42px', width: '100%', borderRadius: '8px', marginBottom: '.8rem', boxSizing: 'border-box' }}
+                  style={nativeFieldStyle}
                 />
 
-                {/* CPF — número usa iframe (div), tipo usa select nativo */}
+                {/* CPF — número usa iframe (div), tipo usa select nativo hidden */}
                 <select id="mp-identification-type" style={{ display: 'none' }} />
                 <div id="mp-identification-number" style={iframeContainerStyle} />
 
-                {/* Bandeira — select nativo, hidden (SDK preenche automaticamente) */}
+                {/* Bandeira — select nativo hidden (SDK preenche automaticamente) */}
                 <select id="mp-issuer" style={{ display: 'none' }} />
 
                 {/* Parcelas — select nativo visível */}
                 <select
                   id="mp-installments"
-                  style={{ ...iframeContainerStyle, padding: '0 1rem', fontSize: '.9rem', fontFamily: 'inherit', border: '1px solid var(--rose-lt)', outline: 'none', height: '42px', width: '100%', borderRadius: '8px', marginBottom: '.8rem', boxSizing: 'border-box', background: 'white', color: 'var(--ink)', appearance: 'auto' }}
+                  style={{ ...nativeFieldStyle, appearance: 'auto' }}
                 />
 
                 {!sdkReady && (
