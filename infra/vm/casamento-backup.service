@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup diário do banco do site
+
+[Service]
+Type=oneshot
+User=casamento
+WorkingDirectory=/opt/casamento/apps/api
+EnvironmentFile=/etc/casamento/api.env
+ExecStart=/usr/local/bin/node src/scripts/backup.ts

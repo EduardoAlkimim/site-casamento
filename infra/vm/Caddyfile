@@ -1,0 +1,13 @@
+# Só a API fica aqui; o site é servido pela Vercel, que repassa /api/* para cá.
+__SITE_HOST__ {
+	encode zstd gzip
+	request_body {
+		max_size 5MB
+	}
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3001
+	}
+	handle {
+		respond "Eduardo & Thamires · API" 404
+	}
+}

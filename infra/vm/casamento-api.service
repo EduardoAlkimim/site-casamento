@@ -1,0 +1,24 @@
+[Unit]
+Description=API do site Eduardo & Thamires
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=casamento
+Group=casamento
+WorkingDirectory=/opt/casamento/apps/api
+EnvironmentFile=/etc/casamento/api.env
+ExecStart=/usr/local/bin/node --max-old-space-size=160 src/server.ts
+Restart=always
+RestartSec=3
+MemoryMax=260M
+
+# Endurecimento: só escreve na pasta de dados.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/casamento
+
+[Install]
+WantedBy=multi-user.target
