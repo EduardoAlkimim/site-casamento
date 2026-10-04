@@ -235,6 +235,8 @@ export async function paymentRoutes(app: FastifyInstance) {
         const mp = await refreshFromProvider(providerId)
         req.log.info({ providerId, status: mp.status }, 'mercadopago: webhook')
       } catch (err) {
+        // Pagamento inexistente para esta conta: responde 200 para o MP não repetir o aviso.
+        if (err instanceof MpError && err.status === 404) return reply.code(200).send({ ignored: true })
         req.log.error({ err, providerId }, 'mercadopago: falha no webhook')
         return reply.code(500).send({ error: 'falha ao consultar pagamento' })
       }
