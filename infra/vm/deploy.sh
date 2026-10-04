@@ -9,7 +9,8 @@ HOST=${VM_HOST:-opc@144.22.185.103}
 git archive --format=tar "$REF" package.json package-lock.json apps/api apps/web/package.json \
   | ssh -i "$KEY" "$HOST" 'sudo bash -c "
       set -e
-      rm -rf /opt/casamento.new && mkdir -p /opt/casamento.new && tar -x -C /opt/casamento.new
+      export PATH=/usr/local/bin:$PATH
+      rm -rf /opt/casamento.new && mkdir -p /opt/casamento.new && tar -xm -C /opt/casamento.new
       cd /opt/casamento.new && /usr/local/bin/npm ci --omit=dev --workspace=api --no-audit --no-fund --loglevel=error
       rm -rf /opt/casamento.old && { [ -d /opt/casamento ] && mv /opt/casamento /opt/casamento.old || true; }
       mv /opt/casamento.new /opt/casamento
