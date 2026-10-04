@@ -220,8 +220,9 @@
   line-height: 1.25;
 }
 
-.more {
-  margin-top: var(--space-5);
+/* O link fica fora da coluna da lista para não puxar o alinhamento. */
+.detailsMore {
+  margin-top: calc(var(--space-5) - var(--space-7));
 }
 
 /* ── Índice ─────────────────────────────────────────────────────────── */
@@ -297,9 +298,23 @@
 
 /* ── Tablet e desktop ───────────────────────────────────────────────── */
 @media (min-width: 48rem) {
+  /* Título centralizado na altura da lista: o meio dele cai na linha "Local". */
   .details {
     grid-template-columns: 1fr 1fr;
-    align-items: end;
+    align-items: center;
+    column-gap: var(--space-8);
+  }
+
+  .detailsIntro {
+    grid-area: 1 / 1;
+  }
+
+  .detailsFacts {
+    grid-area: 1 / 2;
+  }
+
+  .detailsMore {
+    grid-area: 2 / 2;
   }
 
   .indexList {

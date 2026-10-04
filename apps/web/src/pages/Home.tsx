@@ -54,7 +54,7 @@ export default function Home() {
       </section>
 
       <section className={styles.details} aria-labelledby="o-dia">
-        <div data-reveal>
+        <div data-reveal className={styles.detailsIntro}>
           <Eyebrow index="—">O dia</Eyebrow>
           <h2 id="o-dia" className={styles.detailsTitle}>
             Ao pôr do sol,
@@ -62,7 +62,7 @@ export default function Home() {
             <em>no meio do verde.</em>
           </h2>
         </div>
-        <div data-reveal style={{ '--reveal-delay': '120ms' } as CSSProperties}>
+        <div data-reveal className={styles.detailsFacts} style={{ '--reveal-delay': '120ms' } as CSSProperties}>
           <dl className={styles.facts}>
             <div>
               <dt>Cerimônia</dt>
@@ -77,7 +77,9 @@ export default function Home() {
               <dd>{wedding.venue.city}</dd>
             </div>
           </dl>
-          <ButtonLink to="/informacoes" variant="quiet" className={styles.more}>
+        </div>
+        <div data-reveal className={styles.detailsMore} style={{ '--reveal-delay': '180ms' } as CSSProperties}>
+          <ButtonLink to="/informacoes" variant="quiet">
             Todas as informações
           </ButtonLink>
         </div>
