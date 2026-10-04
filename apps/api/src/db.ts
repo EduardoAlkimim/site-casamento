@@ -75,6 +75,27 @@ const migrations: string[] = [
   );
   CREATE INDEX gifts_list_position ON gifts (list, position);
   `,
+  `
+  -- Pagamentos (Mercado Pago). O valor é copiado do presente no momento da compra.
+  CREATE TABLE payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT NOT NULL UNIQUE,
+    gift_id INTEGER REFERENCES gifts(id) ON DELETE SET NULL,
+    gift_name TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+    method TEXT NOT NULL CHECK (method IN ('pix', 'card')),
+    payer_name TEXT NOT NULL,
+    payer_email TEXT NOT NULL,
+    provider_id TEXT UNIQUE,
+    status TEXT NOT NULL DEFAULT 'creating',
+    status_detail TEXT,
+    message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    approved_at TEXT
+  );
+  CREATE INDEX payments_gift ON payments (gift_id);
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }

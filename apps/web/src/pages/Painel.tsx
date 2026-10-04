@@ -8,6 +8,7 @@ import { Eyebrow } from '../design-system/components/Ornaments'
 import { Switch } from '../design-system/components/Switch'
 import styles from './Painel.module.css'
 import { ListasPanel } from './painel/ListasPanel'
+import { RecebidosPanel } from './painel/RecebidosPanel'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -84,6 +85,7 @@ function Dashboard() {
       <PadrinhosPanel />
       <ManualPanel />
       <ListasPanel />
+      <RecebidosPanel />
     </div>
   )
 }

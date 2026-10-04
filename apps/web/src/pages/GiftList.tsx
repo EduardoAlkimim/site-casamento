@@ -1,22 +1,30 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { api, type Gift, type GiftListData, type GiftListName } from '../lib/api'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { api, type Gift, type GiftListData, type GiftListName, type PaymentConfig } from '../lib/api'
 import { formatBRL } from '../lib/money'
 import { Sprig } from '../design-system/botanicals/Botanicals'
 import { Divider, Eyebrow } from '../design-system/components/Ornaments'
 import styles from './GiftList.module.css'
+import { PaymentDialog } from './presentes/PaymentDialog'
 
 // Página pública das listas (casamento e chá de panela). Todo o texto vem do
 // painel; o bloqueio é decidido pela API (PageGate mostra a tela "Em breve").
 export default function GiftList({ list }: { list: GiftListName }) {
   const [data, setData] = useState<GiftListData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [payments, setPayments] = useState<PaymentConfig | null>(null)
+  const [paying, setPaying] = useState<Gift | null>(null)
 
-  useEffect(() => {
-    setData(null)
+  const load = useCallback(() => {
     api<GiftListData>(`/listas/${list}`)
       .then(setData)
       .catch(err => setError(err.message))
   }, [list])
+
+  useEffect(() => {
+    setData(null)
+    load()
+    api<PaymentConfig>('/pagamentos/config').then(setPayments, () => setPayments({ enabled: false, publicKey: null }))
+  }, [load])
 
   return (
     <div className={styles.page}>
@@ -37,9 +45,26 @@ export default function GiftList({ list }: { list: GiftListName }) {
       {data && data.gifts.length > 0 && (
         <ul className={styles.grid}>
           {data.gifts.map((gift, i) => (
-            <GiftItem key={gift.id} gift={gift} index={i} />
+            <GiftItem
+              key={gift.id}
+              gift={gift}
+              index={i}
+              canPay={Boolean(payments?.enabled)}
+              onGive={() => setPaying(gift)}
+            />
           ))}
         </ul>
+      )}
+
+      {paying && payments?.publicKey && (
+        <PaymentDialog
+          gift={paying}
+          publicKey={payments.publicKey}
+          onClose={paid => {
+            setPaying(null)
+            if (paid) load()
+          }}
+        />
       )}
     </div>
   )
@@ -47,7 +72,7 @@ export default function GiftList({ list }: { list: GiftListName }) {
 
 const STATUS_LABEL = { reservado: 'Reservado', presenteado: 'Presenteado' } as const
 
-function GiftItem({ gift, index }: { gift: Gift; index: number }) {
+function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; canPay: boolean; onGive: () => void }) {
   const given = gift.status === 'presenteado'
 
   return (
@@ -81,7 +106,14 @@ function GiftItem({ gift, index }: { gift: Gift; index: number }) {
             </svg>
           </a>
         )}
-        {!given && gift.purchaseMode === 'site' && <span className={styles.soon}>Pagamento em breve</span>}
+        {!given && gift.purchaseMode === 'site' && gift.priceCents != null && gift.status === 'disponivel' &&
+          (canPay ? (
+            <button type="button" className={styles.action} onClick={onGive}>
+              Presentear
+            </button>
+          ) : (
+            <span className={styles.soon}>Pagamento em breve</span>
+          ))}
       </div>
     </li>
   )

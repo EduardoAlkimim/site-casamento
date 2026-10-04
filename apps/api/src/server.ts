@@ -5,6 +5,7 @@ import { config } from './config.ts'
 import './db.ts'
 import { adminRoutes } from './routes/admin.ts'
 import { giftRoutes } from './routes/gifts.ts'
+import { paymentRoutes } from './routes/payments.ts'
 import { publicRoutes } from './routes/public.ts'
 import { uploadRoutes } from './routes/uploads.ts'
 
@@ -30,5 +31,6 @@ await app.register(publicRoutes, { prefix: '/api' })
 await app.register(adminRoutes, { prefix: '/api/admin' })
 await app.register(giftRoutes, { prefix: '/api' })
 await app.register(uploadRoutes, { prefix: '/api' })
+await app.register(paymentRoutes, { prefix: '/api' })
 
 await app.listen({ port: config.port, host: config.host })

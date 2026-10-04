@@ -57,3 +57,23 @@ export async function uploadImage(file: Blob): Promise<{ image: string; url: str
   if (!res.ok) throw new ApiError(res.status, data.error ?? 'Não foi possível enviar a foto.')
   return data
 }
+
+export type PaymentConfig = { enabled: boolean; publicKey: string | null }
+export type PaymentCreated = {
+  id: string
+  status: string
+  message: string | null
+  pix: { qrCode: string; qrCodeBase64: string; expiresAt: string | null } | null
+}
+export type AdminPayment = {
+  id: string
+  giftName: string
+  amountCents: number
+  method: 'pix' | 'card'
+  payerName: string
+  payerEmail: string
+  status: string
+  message: string | null
+  createdAt: string
+  approvedAt: string | null
+}

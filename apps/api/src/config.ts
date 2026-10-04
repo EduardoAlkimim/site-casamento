@@ -14,4 +14,9 @@ export const config = {
   production: process.env.NODE_ENV === 'production',
   // Endereço público do site (Vercel) — usado para montar os links das tags NFC.
   publicSiteUrl: (process.env.PUBLIC_SITE_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  // Mercado Pago. Sem o access token, os pagamentos ficam desligados ("em breve").
+  mpAccessToken: process.env.MP_ACCESS_TOKEN ?? '',
+  mpPublicKey: process.env.MP_PUBLIC_KEY ?? '',
+  // Assinatura secreta do webhook (opcional: o status é sempre conferido na API do MP).
+  mpWebhookSecret: process.env.MP_WEBHOOK_SECRET ?? '',
 }
