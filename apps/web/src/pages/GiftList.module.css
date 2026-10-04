@@ -1,0 +1,168 @@
+.page {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: var(--space-10) var(--gutter) var(--space-8);
+}
+
+.head {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  max-width: 40rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.title {
+  font-size: var(--fs-h1);
+}
+
+.intro {
+  max-width: var(--measure);
+  color: var(--text-soft);
+  white-space: pre-line;
+}
+
+.divider {
+  margin-block: var(--space-7);
+}
+
+.state {
+  padding-block: var(--space-8);
+  color: var(--text-soft);
+  text-align: center;
+}
+
+/* Grade: 2 colunas no celular para comparar rápido; 3 e 4 em telas maiores. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-7) var(--space-4);
+  list-style: none;
+  padding: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  background: var(--color-sand);
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+.item:hover .photo img {
+  transform: scale(1.03);
+}
+
+.placeholder {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.placeholder svg {
+  width: 45%;
+  opacity: 0.7;
+}
+
+.badge {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: 2px var(--space-2);
+  background: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-wine-deep);
+}
+
+.name {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.description {
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.price {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 2.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  color: var(--accent);
+}
+
+.action svg {
+  width: 0.7rem;
+}
+
+.soon {
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+}
+
+.given .photo img,
+.given .placeholder {
+  opacity: 0.55;
+  filter: grayscale(0.4);
+}
+
+.given .name,
+.given .price {
+  color: var(--text-soft);
+}
+
+@media (min-width: 48rem) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-8) var(--space-6);
+  }
+}
+
+@media (min-width: 72rem) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,246 @@
+.header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(var(--space-3), env(safe-area-inset-top)) var(--gutter) var(--space-3);
+  pointer-events: none;
+}
+
+.header > * {
+  pointer-events: auto;
+}
+
+.monogram {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.amp {
+  margin-inline: 0.12em;
+  font-style: italic;
+  color: var(--highlight);
+}
+
+/* Botão de três pontos: discreto, com área de toque de 44px. */
+.dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-right: calc(var(--space-3) * -1);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.dots:hover span:first-child {
+  transform: translateX(-2px);
+}
+
+.dots:hover span:last-child {
+  transform: translateX(2px);
+}
+
+/* ── Menu em tela cheia ─────────────────────────────────────────────── */
+.menu {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden auto;
+  background: var(--bg);
+  color: var(--text);
+  opacity: 0;
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    overlay var(--dur-slow) allow-discrete,
+    display var(--dur-slow) allow-discrete;
+}
+
+.menu[open] {
+  opacity: 1;
+}
+
+@starting-style {
+  .menu[open] {
+    opacity: 0;
+  }
+}
+
+.menu::backdrop {
+  background: transparent;
+}
+
+:global(html:has(dialog[open])) {
+  overflow: hidden;
+}
+
+.menuInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: max(var(--space-3), env(safe-area-inset-top)) var(--gutter) max(var(--space-6), env(safe-area-inset-bottom));
+}
+
+.menuTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.75rem;
+}
+
+.menuDate {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-soft);
+}
+
+.close {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-right: calc(var(--space-3) * -1);
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.close span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 1px;
+  background: var(--text);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.close span + span {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin-block: auto;
+  padding-block: var(--space-7);
+}
+
+.list li {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.list li:first-child {
+  border-top: 1px solid var(--line-soft);
+}
+
+.link {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  grid-template-areas:
+    'num label'
+    'num hint';
+  align-items: baseline;
+  column-gap: var(--space-2);
+  padding-block: var(--space-4);
+  text-decoration: none;
+}
+
+.num {
+  grid-area: num;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.0625rem;
+  color: var(--highlight);
+}
+
+.label {
+  grid-area: label;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.6rem + 2vw, 3rem);
+  line-height: 1.1;
+  transition:
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.hint {
+  grid-area: hint;
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+}
+
+.link:hover .label {
+  color: var(--accent);
+  transform: translateX(6px);
+}
+
+.active .label {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.menuFoot {
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+}
+
+.menuLeaf {
+  position: absolute;
+  right: -3rem;
+  bottom: -2.5rem;
+  width: min(62vw, 22rem);
+  opacity: 0.35;
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menu[open] .list li {
+    animation: rise var(--dur-slow) var(--ease-out) both;
+    animation-delay: calc(120ms + var(--i) * 55ms);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (min-width: 60rem) {
+  .list {
+    max-width: 40rem;
+  }
+}

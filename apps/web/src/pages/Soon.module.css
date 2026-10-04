@@ -1,0 +1,24 @@
+.soon {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-5);
+  min-height: 80dvh;
+  padding: var(--space-10) var(--gutter) var(--space-8);
+  text-align: center;
+}
+
+.leaf {
+  width: 7rem;
+  margin-bottom: var(--space-4);
+  transform: rotate(-12deg);
+}
+
+.title {
+  font-size: var(--fs-h1);
+}
+
+.text {
+  max-width: var(--measure);
+  color: var(--text-soft);
+}

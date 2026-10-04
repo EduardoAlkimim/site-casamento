@@ -1,0 +1,43 @@
+.botanical {
+  color: var(--botanical);
+  overflow: visible;
+}
+
+.veins {
+  opacity: 0.45;
+}
+
+.holes {
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .botanical[data-draw] path {
+    stroke-dasharray: 1 1;
+    stroke-dashoffset: 1;
+    animation: draw var(--dur-draw) var(--ease-in-out) forwards;
+    animation-delay: var(--draw-delay, 0ms);
+  }
+
+  .botanical[data-draw] .veins path {
+    animation-delay: calc(var(--draw-delay, 0ms) + 600ms);
+  }
+
+  .botanical[data-draw] .holes {
+    opacity: 0;
+    animation: fade var(--dur-slow) var(--ease-out) forwards;
+    animation-delay: calc(var(--draw-delay, 0ms) + 1400ms);
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade {
+  to {
+    opacity: 0.9;
+  }
+}

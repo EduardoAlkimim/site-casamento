@@ -1,0 +1,59 @@
+.countdown {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.lead {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.days {
+  font-family: var(--font-display);
+  font-size: clamp(5rem, 3rem + 10vw, 9rem);
+  line-height: 0.9;
+  font-variant-numeric: lining-nums;
+  color: var(--text);
+}
+
+.unit {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-h3);
+  color: var(--accent);
+}
+
+.clock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--fs-small);
+  font-weight: 450;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+
+.clock small {
+  margin-left: 2px;
+  font-size: 0.75em;
+  letter-spacing: 0.08em;
+}
+
+.sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gilded);
+}

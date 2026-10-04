@@ -1,31 +1,18 @@
-﻿# Site-casamento
+# Eduardo & Thamires · 21.04.2027
 
-Site de casamento full stack, com backend prÃ³prio em Node.js e **integraÃ§Ã£o com Mercado Pago** para gestÃ£o de pagamentos (lista de presentes / contribuiÃ§Ãµes).
+Site do casamento, reconstruído do zero. Ver `docs/ARQUITETURA.md` e `docs/DESIGN.md`.
 
-## Stack
+## Rodar localmente
 
-- **Frontend:** `web/`
-- **Backend:** Node.js (`api/`) com integraÃ§Ã£o Ã  API do Mercado Pago
-- **Deploy:** Vercel
-
-## Estrutura
-
-```
-.
-â”œâ”€â”€ api/     # backend Node.js + integraÃ§Ã£o Mercado Pago
-â””â”€â”€ web/     # frontend
-```
-
-## Como rodar localmente
-
-```bash
-git clone https://github.com/EduardoAlkimim/site-casamento.git
-cd Site-casamento/api
+```sh
 npm install
+npm run dev:web        # http://localhost:5173
 ```
 
-Configure as credenciais do Mercado Pago em um `.env` local (nÃ£o versionado â€” veja `.gitignore`), depois:
+API local: copie `apps/api/.env.example` para `apps/api/.env`, preencha e rode `npm run dev -w api` (http://localhost:3001). Painel: `/painel`.
 
-```bash
-npm start
-```
+## Observação sobre o Windows
+
+O `package.json` da raiz fixa `rolldown` em `1.0.1` (via `overrides`). A versão mais nova do binário
+nativo foi bloqueada pelo Controle de Aplicativo do Windows nesta máquina; a 1.0.1 já é confiável.
+Pode remover o override quando a versão nova deixar de ser bloqueada.

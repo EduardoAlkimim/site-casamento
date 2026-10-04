@@ -1,0 +1,19 @@
+.opening {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-6);
+  min-height: 90dvh;
+  padding: var(--gutter);
+}
+
+.leaf {
+  width: 8rem;
+}
+
+.text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-lead);
+  color: var(--text-soft);
+}

@@ -1,0 +1,128 @@
+.tabs {
+  display: flex;
+  border-bottom: var(--hairline);
+}
+
+.tab {
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+}
+
+.tab[aria-pressed='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.listHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.giftRow {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-bottom: var(--hairline);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.thumb {
+  flex: none;
+  width: 3.5rem;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--color-sand);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.giftName {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+
+.giftForm {
+  margin-top: var(--space-2);
+}
+
+.photoField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.photoPreview {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 6rem;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--color-sand);
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+}
+
+.photoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoActions {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.selectField {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.selectLabel {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.select {
+  min-height: 3rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  font-size: 1.0625rem;
+  accent-color: var(--accent);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

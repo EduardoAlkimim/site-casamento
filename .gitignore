@@ -1,7 +1,12 @@
 node_modules/
-.env
 dist/
-apps/api/node_modules/
-apps/web/node_modules/
 .env
-api.zip
+.env.*
+!.env.example
+*.log
+
+# Chaves e segredos nunca vão para o git
+*.key
+*.key.pub
+*.pem
+data/
