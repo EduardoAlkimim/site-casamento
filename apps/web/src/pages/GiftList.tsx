@@ -100,19 +100,21 @@ function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; 
 
       <div className={styles.foot}>
         {gift.priceCents != null && <span className={styles.price}>{formatBRL(gift.priceCents)}</span>}
+        {/* O botão "se estica" sobre o card inteiro: tocar em qualquer lugar presenteia. */}
         {!given && gift.purchaseMode === 'link' && gift.externalUrl && (
-          <a className={styles.action} href={gift.externalUrl} target="_blank" rel="noopener noreferrer">
+          <a className={`${styles.cta} ${styles.ctaOutline}`} href={gift.externalUrl} target="_blank" rel="noopener noreferrer">
             Ver na loja
-            <span className="visually-hidden"> (abre em outra aba)</span>
+            <span className="visually-hidden"> {gift.name} (abre em outra aba)</span>
             <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M3 9 9 3M4 3h5v5" fill="none" stroke="currentColor" strokeWidth="1" />
+              <path d="M3 9 9 3M4 3h5v5" fill="none" stroke="currentColor" strokeWidth="1.2" />
             </svg>
           </a>
         )}
         {!given && gift.purchaseMode === 'site' && gift.priceCents != null && gift.status === 'disponivel' &&
           (canPay ? (
-            <button type="button" className={styles.action} onClick={onGive}>
+            <button type="button" className={styles.cta} onClick={onGive}>
               Presentear
+              <span className="visually-hidden"> {gift.name}</span>
             </button>
           ) : (
             <span className={styles.soon}>Pagamento em breve</span>
