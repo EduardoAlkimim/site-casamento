@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router'
 import { api, type AdminPadrinho, type ManualSection, type Page } from '../lib/api'
 import { useAccess } from '../lib/access'
+import { formatBRL } from '../lib/money'
 import { Button } from '../design-system/components/Button'
 import { Field } from '../design-system/components/Field'
 import { Eyebrow } from '../design-system/components/Ornaments'
@@ -60,13 +61,116 @@ function Login() {
   )
 }
 
-/* ── Painel ──────────────────────────────────────────────────────────── */
+/* ── Painel: índice + uma página por seção ───────────────────────────── */
+type Section = {
+  slug: string
+  label: string
+  group: 'O site' | 'Presentes' | 'Convidados'
+  num?: string
+  render: () => ReactNode
+}
+
+const SECTIONS: Section[] = [
+  { slug: 'revisar', label: 'Textos para revisar', group: 'O site', render: () => <PendenciasPanel /> },
+  { slug: 'paginas', label: 'Abrir e bloquear', group: 'O site', num: 'I', render: () => <PagesPanel /> },
+  { slug: 'inicio', label: 'Página inicial', group: 'O site', num: 'II', render: () => <InicioPanel /> },
+  { slug: 'historia', label: 'Nossa História', group: 'O site', num: 'III', render: () => <HistoriaPanel /> },
+  { slug: 'informacoes', label: 'Informações', group: 'O site', num: 'IV', render: () => <InformacoesPanel /> },
+  { slug: 'presentes', label: 'Listas de presentes', group: 'Presentes', num: 'V', render: () => <ListasPanel /> },
+  { slug: 'recebidos', label: 'Presentes recebidos', group: 'Presentes', num: 'VI', render: () => <RecebidosPanel /> },
+  { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VII', render: () => <RecadosPanel /> },
+  { slug: 'padrinhos', label: 'Padrinhos e tags NFC', group: 'Convidados', num: 'VIII', render: () => <PadrinhosPanel /> },
+  { slug: 'manual', label: 'Manual do Padrinho', group: 'Convidados', num: 'IX', render: () => <ManualPanel /> },
+]
+
 function Dashboard() {
-  const { refresh } = useAccess()
+  const { secao } = useParams()
+  if (!secao) return <Overview />
+  const section = SECTIONS.find(s => s.slug === secao)
+  return (
+    <div className={`${styles.dashboard} ${styles.sectionPage}`}>
+      <Link to="/painel" className={styles.back}>
+        <svg viewBox="0 0 32 12" aria-hidden="true">
+          <path d="M32 6H2M7 1 2 6l5 5" fill="none" stroke="currentColor" strokeWidth="1" />
+        </svg>
+        Painel
+      </Link>
+      {section ? section.render() : <p className={styles.help}>Esta seção não existe.</p>}
+    </div>
+  )
+}
+
+type Summary = {
+  pendencias: number
+  recadosNovos: number
+  recebidoCents: number
+  recebidos: number
+  padrinhos: number
+  presentes: number
+}
+
+function Overview() {
+  const { pages, refresh } = useAccess()
+  const [sum, setSum] = useState<Summary | null>(null)
+
+  useEffect(() => {
+    // Números do resumo; se algum falhar, o índice aparece mesmo assim.
+    const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback)
+    Promise.all([
+      safe(api<{ items: unknown[] }>('/admin/pendencias'), { items: [] }),
+      safe(api<{ messages: { status: string }[] }>('/admin/recados'), { messages: [] }),
+      safe(api<{ payments: { status: string; amountCents: number }[] }>('/admin/pagamentos'), { payments: [] }),
+      safe(api<{ padrinhos: unknown[] }>('/admin/padrinhos'), { padrinhos: [] }),
+      safe(api<{ gifts: unknown[] }>('/admin/listas/casamento'), { gifts: [] }),
+      safe(api<{ gifts: unknown[] }>('/admin/listas/cha'), { gifts: [] }),
+    ]).then(([p, r, pay, pad, gc, gh]) => {
+      const approved = pay.payments.filter(x => x.status === 'approved')
+      setSum({
+        pendencias: p.items.length,
+        recadosNovos: r.messages.filter(m => m.status === 'pendente').length,
+        recebidoCents: approved.reduce((t, x) => t + x.amountCents, 0),
+        recebidos: approved.length,
+        padrinhos: pad.padrinhos.length,
+        presentes: gc.gifts.length + gh.gifts.length,
+      })
+    })
+  }, [])
 
   const logout = async () => {
     await api('/admin/logout', { body: {} })
     await refresh()
+  }
+
+  const locked = Object.values(pages).filter(p => p.locked)
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+  // Resumo curto ao lado de cada seção; destaque quando pede atenção.
+  const hint = (slug: string): { text: string; alert?: boolean } => {
+    if (!sum) return { text: '' }
+    switch (slug) {
+      case 'revisar':
+        return sum.pendencias ? { text: plural(sum.pendencias, 'pendente', 'pendentes'), alert: true } : { text: 'Tudo revisado' }
+      case 'paginas':
+        return { text: locked.length ? `${plural(locked.length, 'bloqueada', 'bloqueadas')}` : 'Todas abertas' }
+      case 'inicio':
+        return { text: 'Frase, horário e local' }
+      case 'historia':
+        return { text: 'Capítulos e fotos' }
+      case 'informacoes':
+        return { text: 'Blocos e perguntas' }
+      case 'presentes':
+        return { text: plural(sum.presentes, 'presente', 'presentes') }
+      case 'recebidos':
+        return { text: sum.recebidos ? `${formatBRL(sum.recebidoCents)} em ${plural(sum.recebidos, 'presente', 'presentes')}` : 'Nenhum ainda' }
+      case 'recados':
+        return sum.recadosNovos ? { text: plural(sum.recadosNovos, 'novo', 'novos'), alert: true } : { text: 'Nenhum novo' }
+      case 'padrinhos':
+        return { text: plural(sum.padrinhos, 'cadastrado', 'cadastrados') }
+      case 'manual':
+        return { text: 'Texto para os padrinhos' }
+      default:
+        return { text: '' }
+    }
   }
 
   return (
@@ -82,32 +186,29 @@ function Dashboard() {
           Sair
         </Button>
       </header>
-      <nav className={styles.jump} aria-label="Ir para">
-        {[
-          ['#revisar', 'Revisar'],
-          ['#paginas', 'Abrir e bloquear'],
-          ['#painel-inicio', 'Início'],
-          ['#painel-historia', 'História'],
-          ['#painel-info', 'Informações'],
-          ['#listas', 'Presentes'],
-          ['#recebidos', 'Recebidos'],
-          ['#painel-recados', 'Recados'],
-          ['#padrinhos', 'Padrinhos'],
-          ['#manual', 'Manual'],
-        ].map(([href, label]) => (
-          <a key={href} href={href}>{label}</a>
-        ))}
-      </nav>
-      <PendenciasPanel />
-      <PagesPanel />
-      <InicioPanel />
-      <HistoriaPanel />
-      <InformacoesPanel />
-      <ListasPanel />
-      <RecebidosPanel />
-      <RecadosPanel />
-      <PadrinhosPanel />
-      <ManualPanel />
+
+      {(['O site', 'Presentes', 'Convidados'] as const).map(group => (
+        <section key={group} className={styles.group} aria-labelledby={`grupo-${group}`}>
+          <h2 id={`grupo-${group}`} className={styles.groupTitle}>{group}</h2>
+          <ul className={styles.index}>
+            {SECTIONS.filter(s => s.group === group).map(s => {
+              const h = hint(s.slug)
+              return (
+                <li key={s.slug}>
+                  <Link to={`/painel/${s.slug}`} className={styles.indexLink}>
+                    <span className={styles.indexNum} aria-hidden="true">{s.num ?? '·'}</span>
+                    <span className={styles.indexLabel}>{s.label}</span>
+                    <span className={`${styles.indexHint} ${h.alert ? styles.indexAlert : ''}`}>{h.text}</span>
+                    <svg className={styles.arrow} viewBox="0 0 32 12" aria-hidden="true">
+                      <path d="M0 6h30M25 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1" />
+                    </svg>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }

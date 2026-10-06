@@ -122,7 +122,6 @@ export function RecadosPanel() {
         Recados recebidos {pending > 0 && <span className={styles.badge}>{pending} {pending === 1 ? 'novo' : 'novos'}</span>}
       </h2>
       <p className={base.help}>Só vocês dois leem os recados — eles não aparecem no site.</p>
-      <PageTexts slug="recados" path="/recados" />
       <div className={styles.toolbar}>
         <Button variant="quiet" onClick={load}>Atualizar</Button>
       </div>
@@ -154,11 +153,21 @@ export function RecadosPanel() {
           ))}
         </ul>
       )}
+      <PageTexts slug="recados" path="/recados" />
     </section>
   )
 }
 
 /* ── Para revisar: todos os textos provisórios, com atalho ───────────── */
+const ANCHOR_ROUTE: Record<string, string> = {
+  'painel-historia': 'historia',
+  'painel-info': 'informacoes',
+  'painel-recados': 'recados',
+  'painel-inicio': 'inicio',
+  listas: 'presentes',
+  manual: 'manual',
+  paginas: 'paginas',
+}
 export function PendenciasPanel() {
   const [items, setItems] = useState<Pendencia[] | null>(null)
   const load = () => api<{ items: Pendencia[] }>('/admin/pendencias').then(d => setItems(d.items), () => setItems([]))
@@ -187,7 +196,7 @@ export function PendenciasPanel() {
       <p className={base.help}>
         {items.length === 0
           ? 'Nenhum texto provisório no site. Tudo com a cara de vocês.'
-          : 'Toque em um item para ir direto ao lugar de editar. Quando o texto deixar de começar com “Texto provisório”, ele sai daqui.'}
+          : 'Toque em um item para abrir a seção certa. Quando o texto deixar de começar com “Texto provisório”, ele sai daqui.'}
       </p>
       {areas.map(area => (
         <div key={area} className={styles.reviewGroup}>
@@ -197,7 +206,7 @@ export function PendenciasPanel() {
               .filter(i => i.area === area)
               .map((i, n) => (
                 <li key={n}>
-                  <a href={`#${i.anchor}`}>{i.label}</a>
+                  <Link to={`/painel/${ANCHOR_ROUTE[i.anchor] ?? ''}`}>{i.label}</Link>
                 </li>
               ))}
           </ul>

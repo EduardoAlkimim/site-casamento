@@ -37,7 +37,7 @@ const router = createBrowserRouter([
       ...gated,
       { path: '/padrinhos', element: <Padrinhos /> },
       { path: '/p/:token', element: <NfcEntry /> },
-      { path: '/painel', element: <Painel /> },
+      { path: '/painel/:secao?', element: <Painel /> },
       { path: '/design-system', element: <DesignSystem /> },
       { path: '*', element: <Soon /> },
     ],
