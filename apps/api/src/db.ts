@@ -96,6 +96,62 @@ const migrations: string[] = [
   );
   CREATE INDEX payments_gift ON payments (gift_id);
   `,
+  `
+  -- Nossa História: capítulos em ordem. image = upload ou caminho fixo (/fotos/...).
+  CREATE TABLE story_moments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position INTEGER NOT NULL,
+    date_label TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    image TEXT
+  );
+  INSERT INTO story_moments (position, date_label, title, body, image) VALUES
+    (1, '11 de dezembro de 2023', 'O dia em que tudo começou', 'Crescemos na mesma escola, mas foi no dia 11 de dezembro de 2023 que eu finalmente tive coragem — e ela disse sim.', '/fotos/foto6.jpg'),
+    (2, '2024', 'Juntos somos mais fortes', 'O primeiro ano juntos não foi só alegria — foi aprendizado, crescimento e a certeza de que somos mais fortes um ao lado do outro.', '/fotos/foto3.jpg'),
+    (3, '2025', 'Descobrindo o mundo lado a lado', 'Viagens, risadas e aventuras. Cada novo lugar vivido juntos virou uma memória que carregamos no coração.', '/fotos/foto1.jpg'),
+    (4, '2026', 'Ela disse sim… de novo', 'Dessa vez com anel, joelho no chão e o coração na garganta. Pedi pra ela me fazer o homem mais feliz do mundo — e ela disse sim.', '/fotos/foto7.jpg'),
+    (5, '21 de abril de 2027', 'Para sempre começa aqui', 'No dia 21 de abril de 2027, vamos prometer um ao outro tudo o que já sentimos. E o resto da vida começa.', NULL);
+
+  -- Informações: blocos editoriais ('destaque') e perguntas frequentes ('faq').
+  CREATE TABLE info_blocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position INTEGER NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'destaque' CHECK (kind IN ('destaque', 'faq')),
+    title TEXT NOT NULL,
+    subtitle TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    map_url TEXT
+  );
+  INSERT INTO info_blocks (position, kind, title, subtitle, body, address) VALUES
+    (1, 'destaque', 'Cerimônia', '21 de abril de 2027 · 16h30', 'Texto provisório: a cerimônia é ao ar livre, no jardim, ao pôr do sol. Chegue uns 30 minutos antes para aproveitar com calma.', 'Horto Brasília Convention · Brasília, DF'),
+    (2, 'destaque', 'Recepção', 'Logo depois da cerimônia', 'Texto provisório: a festa continua no mesmo lugar. Jantar, pista e muito carinho.', ''),
+    (3, 'destaque', 'Traje', '', 'Texto provisório: em breve contamos o traje. Lembrem que a cerimônia é na grama — sapatos confortáveis ajudam muito.', ''),
+    (4, 'destaque', 'Estacionamento', '', 'Texto provisório: informações sobre estacionamento no local.', ''),
+    (5, 'destaque', 'Hospedagem', '', 'Texto provisório: sugestões de hotéis para quem vem de fora.', ''),
+    (6, 'faq', 'Posso levar acompanhante?', '', 'Texto provisório: os nomes no convite são os convidados confirmados.', ''),
+    (7, 'faq', 'Crianças são bem-vindas?', '', 'Texto provisório: resposta dos noivos.', '');
+
+  -- Recados dos convidados; só aparecem no mural depois de aprovados.
+  CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_name TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovado', 'oculto')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  UPDATE pages SET heading = 'De dois a um',
+    intro = 'Texto provisório: do primeiro sim, em 2023, ao sim que vamos dizer em 2027. Role devagar.'
+    WHERE slug = 'nossa-historia';
+  UPDATE pages SET heading = 'Tudo o que você precisa saber',
+    intro = 'Texto provisório: local, horários e alguns detalhes para o dia ser leve para todo mundo.'
+    WHERE slug = 'informacoes';
+  UPDATE pages SET heading = 'Palavras que vamos guardar',
+    intro = 'Texto provisório: uma palavra, uma lembrança, um conselho. Vamos guardar cada uma.'
+    WHERE slug = 'recados';
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }

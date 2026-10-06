@@ -9,6 +9,7 @@ import { Switch } from '../design-system/components/Switch'
 import styles from './Painel.module.css'
 import { ListasPanel } from './painel/ListasPanel'
 import { RecebidosPanel } from './painel/RecebidosPanel'
+import { HistoriaPanel, InformacoesPanel, RecadosPanel } from './painel/ContentPanels'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -81,11 +82,28 @@ function Dashboard() {
           Sair
         </Button>
       </header>
+      <nav className={styles.jump} aria-label="Ir para">
+        {[
+          ['#paginas', 'Páginas'],
+          ['#padrinhos', 'Padrinhos'],
+          ['#manual', 'Manual'],
+          ['#listas', 'Presentes'],
+          ['#recebidos', 'Recebidos'],
+          ['#painel-historia', 'História'],
+          ['#painel-info', 'Informações'],
+          ['#painel-recados', 'Recados'],
+        ].map(([href, label]) => (
+          <a key={href} href={href}>{label}</a>
+        ))}
+      </nav>
       <PagesPanel />
       <PadrinhosPanel />
       <ManualPanel />
       <ListasPanel />
       <RecebidosPanel />
+      <HistoriaPanel />
+      <InformacoesPanel />
+      <RecadosPanel />
     </div>
   )
 }

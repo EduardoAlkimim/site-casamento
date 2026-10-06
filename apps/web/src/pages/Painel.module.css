@@ -52,6 +52,32 @@
 
 .blockTitle {
   font-size: var(--fs-h2);
+  scroll-margin-top: 5rem;
+}
+
+/* Atalhos para as seções do painel. */
+.jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.jump a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-small);
+  text-decoration: none;
+  transition: border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+
+.jump a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .help {

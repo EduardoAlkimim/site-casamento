@@ -21,7 +21,8 @@ function sniff(buf: Buffer): keyof typeof TYPES | null {
   return null
 }
 
-export const imageUrl = (name: string | null) => (name ? `/api/uploads/${name}` : null)
+// Upload na VM (nome aleatório) ou foto fixa do site (/fotos/...).
+export const imageUrl = (name: string | null) => (!name ? null : name.startsWith('/') ? name : `/api/uploads/${name}`)
 
 export async function removeUpload(name: string | null) {
   if (name && NAME.test(name)) await unlink(join(config.uploadsDir, name)).catch(() => {})

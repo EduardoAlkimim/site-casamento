@@ -77,3 +77,17 @@ export type AdminPayment = {
   createdAt: string
   approvedAt: string | null
 }
+
+export type PageText = { title: string; heading: string | null; intro: string | null }
+export type StoryMoment = { id: number; dateLabel: string; title: string; body: string; image: string | null; imageUrl: string | null }
+export type InfoBlock = {
+  id: number
+  kind: 'destaque' | 'faq'
+  title: string
+  subtitle: string
+  body: string
+  address: string
+  mapUrl: string | null
+}
+export type GuestMessage = { id: number; name: string; body: string; createdAt: string }
+export type AdminMessage = GuestMessage & { status: 'pendente' | 'aprovado' | 'oculto' }

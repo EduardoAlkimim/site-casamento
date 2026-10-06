@@ -7,6 +7,9 @@ import { PageGate } from './design-system/components/LockScreen'
 import { SiteLayout } from './design-system/components/SiteLayout'
 import DesignSystem from './pages/DesignSystem'
 import GiftList from './pages/GiftList'
+import Historia from './pages/Historia'
+import Informacoes from './pages/Informacoes'
+import Recados from './pages/Recados'
 import Home from './pages/Home'
 import NfcEntry from './pages/NfcEntry'
 import Padrinhos from './pages/Padrinhos'
@@ -17,6 +20,9 @@ import Soon from './pages/Soon'
 const content: Record<string, ReactNode> = {
   presentes: <GiftList list="casamento" />,
   'cha-de-panela': <GiftList list="cha" />,
+  'nossa-historia': <Historia />,
+  informacoes: <Informacoes />,
+  recados: <Recados />,
 }
 const gated = ['nossa-historia', 'informacoes', 'cha-de-panela', 'presentes', 'recados'].map(slug => ({
   path: `/${slug}`,

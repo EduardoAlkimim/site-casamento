@@ -1,0 +1,385 @@
+.page {
+  overflow-x: clip;
+}
+
+/* ── Abertura ───────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-5);
+  min-height: 92dvh;
+  padding: var(--space-10) var(--gutter) var(--space-8);
+  text-align: center;
+}
+
+.heroLeaf {
+  position: absolute;
+  top: 12%;
+  right: -3.5rem;
+  width: min(48vw, 15rem);
+  opacity: 0.35;
+  transform: rotate(-30deg);
+  pointer-events: none;
+}
+
+.title {
+  max-width: 12ch;
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+}
+
+.intro {
+  max-width: 28rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-lead);
+  line-height: 1.4;
+  color: var(--text-soft);
+  white-space: pre-line;
+}
+
+.scrollHint {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.scrollHint span {
+  width: 1px;
+  height: 3rem;
+  background: linear-gradient(var(--botanical), transparent);
+  transform-origin: top;
+}
+
+.state {
+  padding: var(--space-8) var(--gutter);
+  color: var(--text-soft);
+  text-align: center;
+}
+
+/* ── Jornada: a linha que acompanha a leitura ───────────────────────── */
+.journey {
+  --track: 0.875rem;
+  --progress: 0;
+  position: relative;
+  display: grid;
+  gap: var(--space-10);
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: var(--space-6) var(--gutter) var(--space-10) calc(var(--gutter) + 2.75rem);
+  list-style: none;
+}
+
+.journey::before,
+.journey::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: var(--space-10);
+  left: calc(var(--gutter) + var(--track));
+  width: 1px;
+}
+
+.journey::before {
+  background: var(--line-soft);
+}
+
+.journey::after {
+  background: var(--botanical);
+  transform: scaleY(var(--progress));
+  transform-origin: top;
+}
+
+.marker {
+  position: absolute;
+  top: 0.25rem;
+  left: calc(var(--track) - 2.75rem - 14px);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  transition:
+    border-color var(--dur-slow) var(--ease-out),
+    background-color var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+
+.marker svg {
+  width: 14px;
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  transition: stroke var(--dur-slow) var(--ease-out), fill var(--dur-slow) var(--ease-out);
+}
+
+[data-reached] > .marker {
+  border-color: var(--botanical);
+  background: var(--surface);
+  transform: scale(1.15);
+}
+
+[data-reached] > .marker svg {
+  stroke: var(--botanical);
+  fill: color-mix(in srgb, var(--botanical) 14%, transparent);
+}
+
+/* ── Capítulo ───────────────────────────────────────────────────────── */
+.chapter {
+  position: relative;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.numeral {
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  z-index: -1;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(7rem, 5rem + 10vw, 13rem);
+  line-height: 1;
+  color: var(--line-soft);
+  pointer-events: none;
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  width: min(100%, 26rem);
+  overflow: hidden;
+  border-radius: var(--radius-arch);
+  background: var(--color-sand);
+}
+
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.date {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--highlight);
+}
+
+.chapterTitle {
+  margin-top: var(--space-3);
+  font-size: var(--fs-h2);
+  line-height: 1.05;
+}
+
+.body {
+  margin-top: var(--space-4);
+  max-width: var(--measure);
+  color: var(--text-soft);
+  white-space: pre-line;
+}
+
+/* ── Final: o capítulo que ainda vamos viver ───────────────────────── */
+.finale {
+  position: relative;
+}
+
+.finaleInner {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-4);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-arch);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  text-align: center;
+}
+
+.finaleLeaf {
+  width: 4.5rem;
+  transform: rotate(-12deg);
+}
+
+.numeralInline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.25rem;
+  color: var(--highlight);
+}
+
+.finaleTitle {
+  font-size: var(--fs-h1);
+  line-height: 1;
+}
+
+.finaleBody {
+  max-width: 26rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--fs-lead);
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+
+.countdown {
+  margin-block: var(--space-4);
+}
+
+/* ── Movimento ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .scrollHint span {
+    animation: hint 2.4s var(--ease-in-out) infinite;
+  }
+
+  /* Foto se revela de baixo para cima e assenta. O recorte fica na imagem,
+     não na moldura: moldura recortada some para o IntersectionObserver. */
+  .photo[data-reveal] img {
+    clip-path: inset(100% 0 0 0);
+    scale: 1.14;
+    transition:
+      clip-path 1.4s var(--ease-out),
+      scale 1.8s var(--ease-out);
+  }
+
+  .photo[data-reveal='in'] img {
+    clip-path: inset(0);
+    scale: 1.06;
+  }
+
+  /* Profundidade: a foto e o numeral andam em velocidades diferentes. */
+  @supports (animation-timeline: view()) {
+    .photo img {
+      animation: drift linear both;
+      animation-timeline: view();
+    }
+
+    .numeral {
+      animation: float linear both;
+      animation-timeline: view();
+    }
+  }
+}
+
+@keyframes drift {
+  from {
+    translate: 0 -5%;
+  }
+  to {
+    translate: 0 5%;
+  }
+}
+
+@keyframes float {
+  from {
+    translate: 0 2.5rem;
+  }
+  to {
+    translate: 0 -2.5rem;
+  }
+}
+
+@keyframes hint {
+  0% {
+    transform: scaleY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+/* ── Desktop: linha no centro, capítulos alternados ─────────────────── */
+@media (min-width: 64rem) {
+  .journey {
+    --track: 50%;
+    padding-inline: var(--gutter);
+  }
+
+  .journey::before,
+  .journey::after {
+    left: 50%;
+  }
+
+  .marker {
+    left: calc(50% - 14px);
+  }
+
+  .chapter {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    column-gap: var(--space-10);
+  }
+
+  .left .photo {
+    grid-column: 1;
+    justify-self: end;
+  }
+
+  .left .text {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .right .photo {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .right .text {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: end;
+    text-align: right;
+  }
+
+  .right .body {
+    margin-left: auto;
+  }
+
+  .numeral {
+    right: auto;
+  }
+
+  .left .numeral {
+    left: calc(50% + var(--space-6));
+    top: -3rem;
+  }
+
+  .right .numeral {
+    right: calc(50% + var(--space-6));
+    top: -3rem;
+  }
+
+  .marker {
+    top: calc(50% - 14px);
+  }
+
+  .finale .marker {
+    top: -14px;
+  }
+
+  .finaleInner {
+    max-width: 40rem;
+    margin-inline: auto;
+    padding-block: var(--space-9);
+  }
+}

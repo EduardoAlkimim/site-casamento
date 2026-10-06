@@ -169,7 +169,7 @@ export function ListasPanel() {
 }
 
 /* ── Título e texto de abertura da página ────────────────────────────── */
-function PageTextEditor(props: {
+export function PageTextEditor(props: {
   slug: string
   heading: string | null
   intro: string | null

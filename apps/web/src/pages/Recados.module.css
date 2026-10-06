@@ -1,0 +1,168 @@
+.page {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  padding: var(--space-10) var(--gutter) var(--space-8);
+}
+
+.head {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  max-width: 40rem;
+  margin-inline: auto;
+  padding-bottom: var(--space-7);
+  text-align: center;
+}
+
+.title {
+  font-size: var(--fs-h1);
+}
+
+.intro {
+  max-width: var(--measure);
+  color: var(--text-soft);
+  white-space: pre-line;
+}
+
+/* Formulário: uma folha de carta. */
+.form {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: var(--space-7) var(--space-5);
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--line-soft), 0 18px 40px -28px color-mix(in srgb, var(--color-ink) 40%, transparent);
+}
+
+.form button[type='submit'] {
+  justify-self: start;
+}
+
+.trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.error {
+  font-size: var(--fs-small);
+  color: var(--danger);
+}
+
+.sent {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-5);
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  text-align: center;
+}
+
+.sentSprig {
+  width: 5rem;
+}
+
+.sentTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+}
+
+.sentTitle em {
+  color: var(--accent);
+}
+
+.sentText {
+  color: var(--text-soft);
+}
+
+.divider {
+  margin-block: var(--space-9) var(--space-6);
+}
+
+.wallTitle {
+  margin-bottom: var(--space-7);
+  font-size: var(--fs-h2);
+  text-align: center;
+}
+
+.wallTitle em {
+  color: var(--accent);
+}
+
+.state {
+  color: var(--text-soft);
+  text-align: center;
+}
+
+/* Mural: bilhetes em colunas, levemente tortos como papel preso. */
+.wall {
+  columns: 1;
+  column-gap: var(--space-6);
+  list-style: none;
+  padding: 0;
+}
+
+.note {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  break-inside: avoid;
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+
+.quote {
+  position: absolute;
+  top: -0.35em;
+  left: var(--space-4);
+  font-family: var(--font-display);
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--highlight);
+}
+
+.noteBody {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.3125rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+@media (min-width: 48rem) {
+  .form {
+    padding: var(--space-8) var(--space-7);
+  }
+
+  .wall {
+    columns: 2;
+  }
+
+  .note {
+    rotate: var(--tilt, 0deg);
+  }
+}
+
+@media (min-width: 72rem) {
+  .wall {
+    columns: 3;
+  }
+}

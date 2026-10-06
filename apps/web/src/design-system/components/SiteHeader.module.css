@@ -13,6 +13,15 @@
   pointer-events: auto;
 }
 
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -1.5rem;
+  z-index: -1;
+  background: linear-gradient(var(--bg) 55%, color-mix(in srgb, var(--bg) 0%, transparent));
+  pointer-events: none;
+}
+
 .monogram {
   display: inline-flex;
   min-height: 2.75rem;
