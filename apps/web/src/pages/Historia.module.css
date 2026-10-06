@@ -83,9 +83,9 @@
   content: '';
   position: absolute;
   top: 0;
-  bottom: var(--space-10);
   left: calc(var(--gutter) + var(--track));
   width: 1px;
+  height: var(--track-length, calc(100% - var(--space-10)));
 }
 
 .journey::before {

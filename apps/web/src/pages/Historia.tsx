@@ -31,7 +31,12 @@ export default function Historia() {
       frame = 0
       const rect = list.getBoundingClientRect()
       const anchor = window.innerHeight * 0.62
-      const progress = Math.min(1, Math.max(0, (anchor - rect.top) / rect.height))
+      // A linha termina no marcador do último capítulo, sem atravessar o cartão final.
+      const markers = list.querySelectorAll<HTMLElement>('[data-chapter] > [aria-hidden="true"]:first-child')
+      const last = markers[markers.length - 1]
+      const end = last ? last.getBoundingClientRect().top + last.offsetHeight / 2 - rect.top : rect.height
+      list.style.setProperty('--track-length', `${Math.round(end)}px`)
+      const progress = Math.min(1, Math.max(0, (anchor - rect.top) / end))
       list.style.setProperty('--progress', progress.toFixed(4))
       list.querySelectorAll<HTMLElement>('[data-chapter]').forEach(el => {
         el.toggleAttribute('data-reached', el.getBoundingClientRect().top < anchor)

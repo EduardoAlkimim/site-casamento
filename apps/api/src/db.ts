@@ -107,10 +107,10 @@ const migrations: string[] = [
     image TEXT
   );
   INSERT INTO story_moments (position, date_label, title, body, image) VALUES
-    (1, '11 de dezembro de 2023', 'O dia em que tudo começou', 'Crescemos na mesma escola, mas foi no dia 11 de dezembro de 2023 que eu finalmente tive coragem — e ela disse sim.', '/fotos/foto6.jpg'),
-    (2, '2024', 'Juntos somos mais fortes', 'O primeiro ano juntos não foi só alegria — foi aprendizado, crescimento e a certeza de que somos mais fortes um ao lado do outro.', '/fotos/foto3.jpg'),
-    (3, '2025', 'Descobrindo o mundo lado a lado', 'Viagens, risadas e aventuras. Cada novo lugar vivido juntos virou uma memória que carregamos no coração.', '/fotos/foto1.jpg'),
-    (4, '2026', 'Ela disse sim… de novo', 'Dessa vez com anel, joelho no chão e o coração na garganta. Pedi pra ela me fazer o homem mais feliz do mundo — e ela disse sim.', '/fotos/foto7.jpg'),
+    (1, 'Ensino médio', 'Onde tudo começou', 'Nossa história começou na escola, no início do ensino médio. Passamos dois anos por ali sem trocar uma única palavra. Foi só no terceiro ano que, enfim, começamos a conversar.', '/fotos/foto6.jpg'),
+    (2, 'Terceiro ano', 'O que nos uniu', 'Bastaram as primeiras conversas para percebermos o quanto tínhamos em comum: a igreja, a família e o jeito de enxergar a vida. Dali nasceu um sentimento único.', '/fotos/foto3.jpg'),
+    (3, '11 de dezembro de 2023', 'O pedido de namoro', 'Essas conversas nos levaram a um almoço com toda a nossa família reunida. E ali, diante de todos, veio o pedido para seguirmos juntos.', '/fotos/foto1.jpg'),
+    (4, '11 de abril de 2026', 'O noivado', 'Em 11 de abril de 2026, durante uma viagem em família, veio o pedido de noivado. Um sim que nos trouxe até aqui e que agora queremos celebrar com vocês.', '/fotos/foto7.jpg'),
     (5, '21 de abril de 2027', 'Para sempre começa aqui', 'No dia 21 de abril de 2027, vamos prometer um ao outro tudo o que já sentimos. E o resto da vida começa.', NULL);
 
   -- Informações: blocos editoriais ('destaque') e perguntas frequentes ('faq').
