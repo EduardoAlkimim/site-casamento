@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
-import { api, type AdminMessage } from '../../lib/api'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router'
+import { api, type AdminMessage, type Pendencia, type SiteTexts } from '../../lib/api'
 import { useAccess } from '../../lib/access'
 import { Button } from '../../design-system/components/Button'
+import { Field } from '../../design-system/components/Field'
 import { Eyebrow } from '../../design-system/components/Ornaments'
 import base from '../Painel.module.css'
 import { PageTextEditor } from './ListasPanel'
@@ -19,7 +21,7 @@ function PageTexts({ slug, path }: { slug: string; path: string }) {
 export function HistoriaPanel() {
   return (
     <section className={base.block} aria-labelledby="painel-historia" id="painel-historia-sec">
-      <Eyebrow index="VI">Nossa História</Eyebrow>
+      <Eyebrow index="III">Nossa História</Eyebrow>
       <h2 id="painel-historia" className={base.blockTitle}>Capítulos</h2>
       <p className={base.help}>
         Cada capítulo tem data, título, texto e foto. Um capítulo <strong>sem foto</strong> vira o fechamento, com a contagem
@@ -47,7 +49,7 @@ export function HistoriaPanel() {
 export function InformacoesPanel() {
   return (
     <section className={base.block} aria-labelledby="painel-info" id="painel-info-sec">
-      <Eyebrow index="VII">Informações</Eyebrow>
+      <Eyebrow index="IV">Informações</Eyebrow>
       <h2 id="painel-info" className={base.blockTitle}>Blocos e perguntas</h2>
       <p className={base.help}>
         “Bloco” aparece como seção (cerimônia, traje, hospedagem…). “Pergunta frequente” aparece no fim, abrindo e fechando.
@@ -82,7 +84,7 @@ export function InformacoesPanel() {
   )
 }
 
-const STATUS = { pendente: 'Esperando aprovação', aprovado: 'No mural', oculto: 'Escondido' } as const
+const STATUS = { pendente: 'Novo', aprovado: 'Lido', oculto: 'Lido' } as const
 
 // SQLite guarda em UTC ("2026-10-04 01:02:03").
 const when = (utc: string) =>
@@ -115,11 +117,11 @@ export function RecadosPanel() {
 
   return (
     <section className={base.block} aria-labelledby="painel-recados" id="painel-recados-sec">
-      <Eyebrow index="VIII">Recados</Eyebrow>
+      <Eyebrow index="VII">Recados</Eyebrow>
       <h2 id="painel-recados" className={base.blockTitle}>
-        Mural {pending > 0 && <span className={styles.badge}>{pending} {pending === 1 ? 'novo' : 'novos'}</span>}
+        Recados recebidos {pending > 0 && <span className={styles.badge}>{pending} {pending === 1 ? 'novo' : 'novos'}</span>}
       </h2>
-      <p className={base.help}>Os recados só aparecem no mural depois que vocês aprovarem.</p>
+      <p className={base.help}>Só vocês dois leem os recados — eles não aparecem no site.</p>
       <PageTexts slug="recados" path="/recados" />
       <div className={styles.toolbar}>
         <Button variant="quiet" onClick={load}>Atualizar</Button>
@@ -132,17 +134,12 @@ export function RecadosPanel() {
             <li key={m.id} className={`${styles.message} ${m.status === 'pendente' ? styles.pending : ''}`}>
               <blockquote className={styles.body}>{m.body}</blockquote>
               <p className={base.rowMeta}>
-                — {m.name} · {when(m.createdAt)} · <span className={styles[m.status]}>{STATUS[m.status]}</span>
+                — {m.name} · {when(m.createdAt)} · <span className={m.status === 'pendente' ? styles.pendente : styles.oculto}>{STATUS[m.status]}</span>
               </p>
               <span className={base.rowActions}>
-                {m.status !== 'aprovado' && (
+                {m.status === 'pendente' && (
                   <Button variant="quiet" onClick={() => act(m.id, { method: 'PATCH', body: { status: 'aprovado' } })}>
-                    Aprovar
-                  </Button>
-                )}
-                {m.status !== 'oculto' && (
-                  <Button variant="quiet" onClick={() => act(m.id, { method: 'PATCH', body: { status: 'oculto' } })}>
-                    Esconder
+                    Marcar como lido
                   </Button>
                 )}
                 <Button
@@ -157,6 +154,131 @@ export function RecadosPanel() {
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+/* ── Para revisar: todos os textos provisórios, com atalho ───────────── */
+export function PendenciasPanel() {
+  const [items, setItems] = useState<Pendencia[] | null>(null)
+  const load = () => api<{ items: Pendencia[] }>('/admin/pendencias').then(d => setItems(d.items), () => setItems([]))
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  if (!items) return null
+  const areas = [...new Set(items.map(i => i.area))]
+
+  return (
+    <section className={`${base.block} ${styles.review}`} aria-labelledby="revisar">
+      <Eyebrow>Para revisar</Eyebrow>
+      <h2 id="revisar" className={base.blockTitle}>
+        {items.length === 0 ? (
+          <>
+            Tudo <em>revisado</em>
+          </>
+        ) : (
+          <>
+            {items.length} {items.length === 1 ? 'texto provisório' : 'textos provisórios'}
+          </>
+        )}
+      </h2>
+      <p className={base.help}>
+        {items.length === 0
+          ? 'Nenhum texto provisório no site. Tudo com a cara de vocês.'
+          : 'Toque em um item para ir direto ao lugar de editar. Quando o texto deixar de começar com “Texto provisório”, ele sai daqui.'}
+      </p>
+      {areas.map(area => (
+        <div key={area} className={styles.reviewGroup}>
+          <p className={styles.reviewArea}>{area}</p>
+          <ul className={styles.reviewList}>
+            {items
+              .filter(i => i.area === area)
+              .map((i, n) => (
+                <li key={n}>
+                  <a href={`#${i.anchor}`}>{i.label}</a>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
+      {items.length > 0 && (
+        <div>
+          <Button variant="quiet" onClick={load}>
+            Atualizar lista
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/* ── Início: frase de abertura e o bloco “O dia” ────────────────────── */
+export function InicioPanel() {
+  const { site, refresh } = useAccess()
+  const [values, setValues] = useState<SiteTexts>(site)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string>()
+  const dirty = (Object.keys(site) as (keyof SiteTexts)[]).some(k => values[k] !== site[k])
+  const set = (k: keyof SiteTexts, v: string) => setValues(prev => ({ ...prev, [k]: v }))
+
+  useEffect(() => setValues(site), [site])
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(undefined)
+    try {
+      await api('/admin/site', { method: 'PATCH', body: values })
+      await refresh()
+      setSaved(true)
+      window.setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className={base.block} aria-labelledby="painel-inicio">
+      <Eyebrow index="II">Início</Eyebrow>
+      <h2 id="painel-inicio" className={base.blockTitle}>Página inicial</h2>
+      <p className={base.help}>Os nomes e a data ficam fixos. O resto da primeira página vocês escrevem aqui.</p>
+      <form className={base.form} onSubmit={save}>
+        <Field
+          label="Frase de abertura"
+          multiline
+          rows={3}
+          hint="Aparece logo abaixo da foto em arco."
+          value={values.phrase}
+          onChange={e => set('phrase', e.target.value)}
+        />
+        <Field label="Bloco “O dia” — primeira linha" value={values.dayTitle} onChange={e => set('dayTitle', e.target.value)} />
+        <Field
+          label="Bloco “O dia” — segunda linha (em itálico)"
+          value={values.dayTitleEm}
+          onChange={e => set('dayTitleEm', e.target.value)}
+        />
+        <Field label="Horário da cerimônia" value={values.ceremonyTime} onChange={e => set('ceremonyTime', e.target.value)} />
+        <Field label="Local" value={values.venue} onChange={e => set('venue', e.target.value)} />
+        <Field
+          label="Cidade"
+          hint="Também aparece no rodapé e no menu."
+          value={values.city}
+          onChange={e => set('city', e.target.value)}
+        />
+        {error && <p className={base.error} role="alert">{error}</p>}
+        <div className={base.formActions}>
+          <Button type="submit" loading={saving} disabled={!dirty}>
+            Salvar
+          </Button>
+          {saved && !dirty && <span className={base.saved} role="status">Salvo</span>}
+          <Link to="/" className={base.inlineLink}>Ver como fica</Link>
+        </div>
+      </form>
     </section>
   )
 }

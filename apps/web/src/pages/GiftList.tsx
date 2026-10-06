@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { api, type Gift, type GiftListData, type GiftListName, type PaymentConfig } from '../lib/api'
 import { formatBRL } from '../lib/money'
-import { Sprig } from '../design-system/botanicals/Botanicals'
+import { BananaLeaf, Monstera, PalmFrond, Sprig } from '../design-system/botanicals/Botanicals'
 import { Divider, Eyebrow } from '../design-system/components/Ornaments'
 import styles from './GiftList.module.css'
 import { PaymentDialog } from './presentes/PaymentDialog'
@@ -70,6 +70,11 @@ export default function GiftList({ list }: { list: GiftListName }) {
   )
 }
 
+// Presente sem foto ganha uma folha e um tom de fundo próprios (pelo id),
+// para a grade não virar uma fileira de quadrados iguais.
+const PLACEHOLDER_ART = [Monstera, BananaLeaf, PalmFrond, Sprig]
+const PLACEHOLDER_TONE = ['toneSand', 'toneBlush', 'tonePaper', 'toneLinen'] as const
+
 const STATUS_LABEL = { reservado: 'Reservado', presenteado: 'Presenteado' } as const
 
 function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; canPay: boolean; onGive: () => void }) {
@@ -85,9 +90,7 @@ function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; 
         {gift.imageUrl ? (
           <img src={gift.imageUrl} alt="" loading="lazy" decoding="async" />
         ) : (
-          <span className={styles.placeholder}>
-            <Sprig strokeWidth={1.2} />
-          </span>
+          <Placeholder id={gift.id} />
         )}
         {gift.status !== 'disponivel' && <figcaption className={styles.badge}>{STATUS_LABEL[gift.status]}</figcaption>}
       </figure>
@@ -116,5 +119,15 @@ function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; 
           ))}
       </div>
     </li>
+  )
+}
+
+function Placeholder({ id }: { id: number }) {
+  const Art = PLACEHOLDER_ART[id % PLACEHOLDER_ART.length]
+  const tone = PLACEHOLDER_TONE[Math.floor(id / PLACEHOLDER_ART.length) % PLACEHOLDER_TONE.length]
+  return (
+    <span className={`${styles.placeholder} ${styles[tone]}`}>
+      <Art strokeWidth={1.2} className={Art === Sprig ? styles.artSprig : styles.art} />
+    </span>
   )
 }

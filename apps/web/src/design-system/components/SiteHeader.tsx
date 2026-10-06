@@ -11,7 +11,7 @@ export function SiteHeader() {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
-  const { pages, padrinho, admin } = useAccess()
+  const { pages, padrinho, admin, site } = useAccess()
   const items = padrinho || admin ? [...navigation, padrinhosNav] : navigation
 
   // Fecha o menu ao navegar.
@@ -76,9 +76,9 @@ export function SiteHeader() {
           </nav>
 
           <p className={styles.menuFoot}>
-            {wedding.venue.name}
+            {site.venue}
             <br />
-            {wedding.venue.city}
+            {site.city}
           </p>
         </div>
         <Monstera className={styles.menuLeaf} strokeWidth={1} />

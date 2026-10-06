@@ -1,21 +1,19 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { api, type GuestMessage, type PageText } from '../lib/api'
+import { useEffect, useState, type FormEvent } from 'react'
+import { api, type PageText } from '../lib/api'
 import { Sprig } from '../design-system/botanicals/Botanicals'
 import { Button } from '../design-system/components/Button'
 import { Field } from '../design-system/components/Field'
-import { Divider, Eyebrow } from '../design-system/components/Ornaments'
+import { Eyebrow } from '../design-system/components/Ornaments'
 import styles from './Recados.module.css'
 
 const MAX = 800
 
 export default function Recados() {
-  const [data, setData] = useState<{ page: PageText; messages: GuestMessage[] } | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<{ page: PageText } | null>(null)
 
+  // Os recados são só para os noivos: aqui é apenas o formulário.
   useEffect(() => {
-    api<{ page: PageText; messages: GuestMessage[] }>('/recados')
-      .then(setData)
-      .catch(err => setError(err.message))
+    api<{ page: PageText }>('/recados').then(setData, () => {})
   }, [])
 
   return (
@@ -28,33 +26,6 @@ export default function Recados() {
 
       <MessageForm />
 
-      <Divider className={styles.divider} />
-
-      <section aria-labelledby="mural">
-        <h2 id="mural" className={styles.wallTitle}>
-          Mural de <em>recados</em>
-        </h2>
-        {error && <p className={styles.state}>{error}</p>}
-        {data && data.messages.length === 0 && (
-          <p className={styles.state}>Ainda não há recados no mural. O seu pode ser o primeiro.</p>
-        )}
-        {data && data.messages.length > 0 && (
-          <ul className={styles.wall}>
-            {data.messages.map((m, i) => (
-              <li
-                key={m.id}
-                className={styles.note}
-                data-reveal
-                style={{ '--tilt': `${[-0.8, 0.5, -0.3, 0.7][i % 4]}deg`, '--reveal-delay': `${(i % 3) * 70}ms` } as CSSProperties}
-              >
-                <span className={styles.quote} aria-hidden="true">“</span>
-                <p className={styles.noteBody}>{m.body}</p>
-                <p className={styles.author}>— {m.name}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   )
 }
@@ -94,7 +65,7 @@ function MessageForm() {
         <p className={styles.sentTitle}>
           Obrigado, <em>{name.trim().split(' ')[0]}!</em>
         </p>
-        <p className={styles.sentText}>Recebemos o seu recado. Ele aparece no mural assim que a gente ler.</p>
+        <p className={styles.sentText}>Seu recado chegou direto para nós dois. Vamos guardar com carinho.</p>
         <Button
           variant="quiet"
           onClick={() => {

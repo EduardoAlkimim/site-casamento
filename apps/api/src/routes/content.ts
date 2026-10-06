@@ -190,6 +190,82 @@ export async function contentRoutes(app: FastifyInstance) {
     })
   })
 
+  /* ── Textos soltos do site (página inicial) ──────────────────────── */
+  const SITE_KEYS = {
+    phrase: 'home.phrase',
+    dayTitle: 'home.dayTitle',
+    dayTitleEm: 'home.dayTitleEm',
+    ceremonyTime: 'home.ceremonyTime',
+    venue: 'home.venue',
+    city: 'home.city',
+  } as const
+  const DEFAULT_PHRASE = 'Ao pôr do sol, entre o verde do Horto, vamos dizer sim.'
+  const readSite = () => {
+    const rows = db.prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[]
+    const map = new Map(rows.map(r => [r.key, r.value]))
+    return Object.fromEntries(Object.entries(SITE_KEYS).map(([k, key]) => [k, map.get(key) ?? '']))
+  }
+
+  app.get('/site', async () => ({ site: readSite() }))
+
+  app.register(async admin => {
+    admin.addHook('preHandler', requireAdmin)
+
+    admin.patch<{ Body: Partial<Record<keyof typeof SITE_KEYS, string>> }>(
+      '/admin/site',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            properties: Object.fromEntries(Object.keys(SITE_KEYS).map(k => [k, { type: 'string', maxLength: 300 }])),
+          },
+        },
+      },
+      async req => {
+        const upsert = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+        for (const [k, v] of Object.entries(req.body)) upsert.run(SITE_KEYS[k as keyof typeof SITE_KEYS], (v ?? '').trim())
+        return { site: readSite() }
+      },
+    )
+
+    // Tudo que ainda começa com "Texto provisório" — a lista de tarefas da noiva.
+    admin.get('/admin/pendencias', async () => {
+      const like = 'Texto provisório%'
+      const items: { area: string; label: string; anchor: string }[] = []
+      const pageAnchor: Record<string, string> = {
+        'nossa-historia': 'painel-historia',
+        informacoes: 'painel-info',
+        presentes: 'listas',
+        'cha-de-panela': 'listas',
+        recados: 'painel-recados',
+      }
+      for (const r of db.prepare('SELECT slug, title FROM pages WHERE intro LIKE ? OR heading LIKE ?').all(like, like) as {
+        slug: string
+        title: string
+      }[]) {
+        items.push({ area: r.title, label: 'Texto do topo da página', anchor: pageAnchor[r.slug] ?? 'paginas' })
+      }
+      for (const [k, key] of Object.entries(SITE_KEYS)) {
+        const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined
+        // A frase da abertura não leva o prefixo (é a primeira coisa que o convidado lê):
+        // conta como pendente enquanto for a frase original.
+        const provisional = row?.value.startsWith('Texto provisório') || (k === 'phrase' && row?.value === DEFAULT_PHRASE)
+        if (provisional) items.push({ area: 'Início', label: k === 'phrase' ? 'Frase de abertura' : k, anchor: 'painel-inicio' })
+      }
+      for (const r of db.prepare('SELECT title FROM info_blocks WHERE body LIKE ? ORDER BY position').all(like) as { title: string }[]) {
+        items.push({ area: 'Informações', label: r.title, anchor: 'painel-info' })
+      }
+      for (const r of db.prepare('SELECT title FROM story_moments WHERE body LIKE ? ORDER BY position').all(like) as { title: string }[]) {
+        items.push({ area: 'Nossa História', label: r.title, anchor: 'painel-historia' })
+      }
+      for (const r of db.prepare('SELECT title FROM manual_sections WHERE body LIKE ? ORDER BY position').all(like) as { title: string }[]) {
+        items.push({ area: 'Manual do Padrinho', label: r.title, anchor: 'manual' })
+      }
+      return { items }
+    })
+  })
+
   /* ── Público ─────────────────────────────────────────────────────── */
   app.get('/historia', async (req, reply) => {
     if (!assertUnlocked('nossa-historia', req, reply)) return reply
@@ -201,15 +277,10 @@ export async function contentRoutes(app: FastifyInstance) {
     return { page: pageText('informacoes'), blocks: listInfo() }
   })
 
+  // Recados são só para os noivos: a página pública mostra apenas o formulário.
   app.get('/recados', async (req, reply) => {
     if (!assertUnlocked('recados', req, reply)) return reply
-    const messages = db
-      .prepare(
-        `SELECT id, author_name AS name, body, created_at AS createdAt FROM messages
-         WHERE status = 'aprovado' ORDER BY id DESC LIMIT 300`,
-      )
-      .all()
-    return { page: pageText('recados'), messages }
+    return { page: pageText('recados') }
   })
 
   app.post<{ Body: { name: string; message: string; website?: string } }>(

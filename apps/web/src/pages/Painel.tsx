@@ -9,7 +9,7 @@ import { Switch } from '../design-system/components/Switch'
 import styles from './Painel.module.css'
 import { ListasPanel } from './painel/ListasPanel'
 import { RecebidosPanel } from './painel/RecebidosPanel'
-import { HistoriaPanel, InformacoesPanel, RecadosPanel } from './painel/ContentPanels'
+import { HistoriaPanel, InformacoesPanel, InicioPanel, PendenciasPanel, RecadosPanel } from './painel/ContentPanels'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -84,26 +84,30 @@ function Dashboard() {
       </header>
       <nav className={styles.jump} aria-label="Ir para">
         {[
-          ['#paginas', 'Páginas'],
-          ['#padrinhos', 'Padrinhos'],
-          ['#manual', 'Manual'],
-          ['#listas', 'Presentes'],
-          ['#recebidos', 'Recebidos'],
+          ['#revisar', 'Revisar'],
+          ['#paginas', 'Abrir e bloquear'],
+          ['#painel-inicio', 'Início'],
           ['#painel-historia', 'História'],
           ['#painel-info', 'Informações'],
+          ['#listas', 'Presentes'],
+          ['#recebidos', 'Recebidos'],
           ['#painel-recados', 'Recados'],
+          ['#padrinhos', 'Padrinhos'],
+          ['#manual', 'Manual'],
         ].map(([href, label]) => (
           <a key={href} href={href}>{label}</a>
         ))}
       </nav>
+      <PendenciasPanel />
       <PagesPanel />
-      <PadrinhosPanel />
-      <ManualPanel />
-      <ListasPanel />
-      <RecebidosPanel />
+      <InicioPanel />
       <HistoriaPanel />
       <InformacoesPanel />
+      <ListasPanel />
+      <RecebidosPanel />
       <RecadosPanel />
+      <PadrinhosPanel />
+      <ManualPanel />
     </div>
   )
 }
@@ -223,7 +227,7 @@ function PadrinhosPanel() {
 
   return (
     <section className={styles.block} aria-labelledby="padrinhos">
-      <Eyebrow index="II">Padrinhos</Eyebrow>
+      <Eyebrow index="VIII">Padrinhos</Eyebrow>
       <h2 id="padrinhos" className={styles.blockTitle}>Tags NFC</h2>
       <p className={styles.help}>
         Cada padrinho recebe um link único. Gravem esse link na tag (ex.: app NFC Tools → Escrever → URL). Ao
@@ -348,7 +352,7 @@ function ManualPanel() {
 
   return (
     <section className={styles.block} aria-labelledby="manual">
-      <Eyebrow index="III">Manual</Eyebrow>
+      <Eyebrow index="IX">Manual</Eyebrow>
       <h2 id="manual" className={styles.blockTitle}>Manual dos padrinhos</h2>
       <p className={styles.help}>
         O mesmo texto para todos, abaixo da mensagem pessoal. Quebras de linha aparecem como vocês escreverem.{' '}

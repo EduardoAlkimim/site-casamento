@@ -12,7 +12,7 @@ const ROMAN = ['II', 'III', 'IV', 'V', 'VI', 'VII']
 
 export default function Home() {
   const { couple, heroPhoto } = wedding
-  const { pages: access, padrinho, admin } = useAccess()
+  const { pages: access, padrinho, admin, site, ready } = useAccess()
   const pages = [...navigation.filter(item => item.to !== '/'), ...(padrinho || admin ? [padrinhosNav] : [])]
 
   return (
@@ -26,7 +26,7 @@ export default function Home() {
             <span className="visually-hidden"> e </span>
             <span className={styles.second}>{couple.second}</span>
           </h1>
-          <p className={`${styles.phrase} ${styles.phraseDesktop}`}>{wedding.phrase}</p>
+          <p className={`${styles.phrase} ${styles.phraseDesktop}`} data-ready={ready || undefined}>{site.phrase}</p>
         </div>
 
         <div className={styles.heroArt}>
@@ -44,7 +44,7 @@ export default function Home() {
           </figure>
         </div>
 
-        <p className={`${styles.phrase} ${styles.phraseMobile}`}>{wedding.phrase}</p>
+        <p className={`${styles.phrase} ${styles.phraseMobile}`} data-ready={ready || undefined}>{site.phrase}</p>
       </section>
 
       <section className={styles.countdown} aria-label="Contagem regressiva" data-reveal>
@@ -57,24 +57,24 @@ export default function Home() {
         <div data-reveal className={styles.detailsIntro}>
           <Eyebrow index="—">O dia</Eyebrow>
           <h2 id="o-dia" className={styles.detailsTitle}>
-            Ao pôr do sol,
+            {site.dayTitle}
             <br />
-            <em>no meio do verde.</em>
+            <em>{site.dayTitleEm}</em>
           </h2>
         </div>
         <div data-reveal className={styles.detailsFacts} style={{ '--reveal-delay': '120ms' } as CSSProperties}>
           <dl className={styles.facts}>
             <div>
               <dt>Cerimônia</dt>
-              <dd>{wedding.ceremonyTime}</dd>
+              <dd>{site.ceremonyTime}</dd>
             </div>
             <div>
               <dt>Local</dt>
-              <dd>{wedding.venue.name}</dd>
+              <dd>{site.venue}</dd>
             </div>
             <div>
               <dt>Cidade</dt>
-              <dd>{wedding.venue.city}</dd>
+              <dd>{site.city}</dd>
             </div>
           </dl>
         </div>

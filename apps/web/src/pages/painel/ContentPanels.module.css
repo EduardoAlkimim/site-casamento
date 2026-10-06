@@ -50,3 +50,52 @@
 .oculto {
   color: var(--text-soft);
 }
+
+/* Para revisar */
+.review {
+  padding: var(--space-6) var(--space-5);
+  border: 1px solid var(--color-rose);
+  background: color-mix(in srgb, var(--surface-warm) 50%, transparent);
+}
+
+.review h2 em {
+  color: var(--success);
+}
+
+.reviewGroup {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.reviewArea {
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-wine-deep);
+}
+
+.reviewList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+}
+
+.reviewList a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: var(--fs-small);
+  text-decoration: none;
+}
+
+.reviewList a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

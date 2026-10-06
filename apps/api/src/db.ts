@@ -152,6 +152,23 @@ const migrations: string[] = [
     intro = 'Texto provisório: uma palavra, uma lembrança, um conselho. Vamos guardar cada uma.'
     WHERE slug = 'recados';
   `,
+  `
+  -- Textos soltos do site (página inicial etc.), editáveis no painel.
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  INSERT INTO settings (key, value) VALUES
+    ('home.phrase', 'Ao pôr do sol, entre o verde do Horto, vamos dizer sim.'),
+    ('home.dayTitle', 'Ao pôr do sol,'),
+    ('home.dayTitleEm', 'no meio do verde.'),
+    ('home.ceremonyTime', '16h30'),
+    ('home.venue', 'Horto Brasília Convention'),
+    ('home.city', 'Brasília, DF');
+  -- Recados agora são só para os noivos: 'pendente' = novo, 'aprovado' = lido.
+  UPDATE pages SET intro = 'Texto provisório: uma palavra, uma lembrança, um conselho. Só nós dois vamos ler.'
+    WHERE slug = 'recados' AND intro LIKE 'Texto provisório:%';
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }

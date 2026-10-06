@@ -91,3 +91,13 @@ export type InfoBlock = {
 }
 export type GuestMessage = { id: number; name: string; body: string; createdAt: string }
 export type AdminMessage = GuestMessage & { status: 'pendente' | 'aprovado' | 'oculto' }
+
+export type SiteTexts = {
+  phrase: string
+  dayTitle: string
+  dayTitleEm: string
+  ceremonyTime: string
+  venue: string
+  city: string
+}
+export type Pendencia = { area: string; label: string; anchor: string }

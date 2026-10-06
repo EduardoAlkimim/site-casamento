@@ -73,9 +73,33 @@
   height: 100%;
 }
 
-.placeholder svg {
-  width: 45%;
+.placeholder .art {
+  width: 62%;
+  height: 72%;
+  opacity: 0.55;
+  transform: rotate(-14deg);
+}
+
+.placeholder .artSprig {
+  width: 48%;
   opacity: 0.7;
+}
+
+.toneSand {
+  background: var(--color-sand);
+}
+
+.toneBlush {
+  background: var(--color-blush);
+}
+
+.tonePaper {
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+
+.toneLinen {
+  background: color-mix(in srgb, var(--color-sand) 45%, var(--color-linen));
 }
 
 .badge {

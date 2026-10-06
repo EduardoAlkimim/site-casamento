@@ -50,8 +50,8 @@ export function ListasPanel() {
 
   return (
     <section className={base.block} aria-labelledby="listas">
-      <Eyebrow index="IV">Listas</Eyebrow>
-      <h2 id="listas" className={base.blockTitle}>Presentes</h2>
+      <Eyebrow index="V">Presentes</Eyebrow>
+      <h2 id="listas" className={base.blockTitle}>Listas de presentes</h2>
 
       <div className={styles.tabs} role="group" aria-label="Escolha a lista">
         {LISTS.map(l => (

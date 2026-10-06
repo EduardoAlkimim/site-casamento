@@ -36,10 +36,10 @@
 
 .adminNote {
   position: sticky;
-  top: 0;
+  top: 4.25rem;
   z-index: calc(var(--z-header) - 1);
-  padding: var(--space-3) var(--gutter);
-  padding-top: calc(var(--space-3) + 3.25rem);
+  margin-top: 4.25rem;
+  padding: var(--space-2) var(--gutter);
   background: var(--surface-warm);
   font-size: var(--fs-small);
   text-align: center;

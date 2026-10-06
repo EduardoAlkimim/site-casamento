@@ -113,6 +113,10 @@
   display: none;
 }
 
+.phrase:not([data-ready]) {
+  visibility: hidden;
+}
+
 /* Entrada da abertura: nomes sobem, foto assenta. Só uma vez, ao carregar. */
 @media (prefers-reduced-motion: no-preference) {
   .date,

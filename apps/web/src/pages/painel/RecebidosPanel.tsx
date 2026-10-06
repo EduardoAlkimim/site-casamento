@@ -40,7 +40,7 @@ export function RecebidosPanel() {
 
   return (
     <section className={base.block} aria-labelledby="recebidos">
-      <Eyebrow index="V">Recebidos</Eyebrow>
+      <Eyebrow index="VI">Recebidos</Eyebrow>
       <h2 id="recebidos" className={base.blockTitle}>Presentes recebidos</h2>
       {list && (
         <p className={styles.total}>
