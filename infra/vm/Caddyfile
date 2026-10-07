@@ -1,3 +1,13 @@
+# O site vem pela Vercel, que informa o endereço real do convidado no
+# X-Forwarded-For. Confiamos nesse cabeçalho para a API enxergar cada pessoa
+# separadamente (limites por pessoa). Como ele pode ser forjado por quem chama
+# a VM direto, o login do painel usa um limite global, não por endereço.
+{
+	servers {
+		trusted_proxies static 0.0.0.0/0 ::/0
+	}
+}
+
 # Só a API fica aqui; o site é servido pela Vercel, que repassa /api/* para cá.
 __SITE_HOST__ {
 	encode zstd gzip

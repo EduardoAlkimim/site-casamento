@@ -36,7 +36,9 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post<{ Body: { password: string } }>(
     '/login',
     {
-      config: { rateLimit: { max: 5, timeWindow: '5 minutes' } },
+      // Limite do painel inteiro (não por endereço): impede adivinhar a senha
+      // trocando de IP. Só os noivos entram, então 30 tentativas sobram.
+      config: { rateLimit: { max: 30, timeWindow: '10 minutes', keyGenerator: () => 'admin-login' } },
       schema: {
         body: { type: 'object', required: ['password'], properties: { password: { type: 'string', maxLength: 200 } } },
       },
