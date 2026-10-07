@@ -15,6 +15,7 @@ export default function GiftList({ list }: { list: GiftListName }) {
   const [payments, setPayments] = useState<PaymentConfig | null>(null)
   const [paying, setPaying] = useState<Gift | null>(null)
   const [reserving, setReserving] = useState<Gift | null>(null)
+  const [query, setQuery] = useState('')
 
   const load = useCallback(() => {
     api<GiftListData>(`/listas/${list}`)
@@ -28,17 +29,24 @@ export default function GiftList({ list }: { list: GiftListName }) {
     api<PaymentConfig>('/pagamentos/config').then(setPayments, () => setPayments({ enabled: false, publicKey: null }))
   }, [load])
 
+  // Busca sem acento: "panela" acha "Panela de pressão".
+  const gifts = useMemo(() => {
+    const q = normalize(query.trim())
+    return !data ? [] : q ? data.gifts.filter(g => normalize(`${g.name} ${g.description}`).includes(q)) : data.gifts
+  }, [data, query])
+
   // Agrupa por cômodo, na ordem definida no painel; sem cômodo vai para "Outros".
   const groups = useMemo(() => {
     if (!data) return []
     const byRoom = data.rooms
-      .map(room => ({ id: `comodo-${room.id}`, name: room.name, gifts: data.gifts.filter(g => g.roomId === room.id) }))
+      .map(room => ({ id: `comodo-${room.id}`, name: room.name, gifts: gifts.filter(g => g.roomId === room.id) }))
       .filter(g => g.gifts.length > 0)
-    const loose = data.gifts.filter(g => g.roomId == null || !data.rooms.some(r => r.id === g.roomId))
+    const loose = gifts.filter(g => g.roomId == null || !data.rooms.some(r => r.id === g.roomId))
     if (byRoom.length === 0) return [{ id: 'todos', name: '', gifts: loose }]
     return loose.length ? [...byRoom, { id: 'comodo-outros', name: 'Outros', gifts: loose }] : byRoom
-  }, [data])
+  }, [data, gifts])
   const grouped = groups.length > 1 || Boolean(groups[0]?.name)
+  const searchable = (data?.gifts.length ?? 0) > 12
 
   const give = (gift: Gift) => (gift.purchaseMode === 'reserva' ? setReserving(gift) : setPaying(gift))
 
@@ -60,7 +68,30 @@ export default function GiftList({ list }: { list: GiftListName }) {
         <p className={styles.state}>A lista está sendo montada. Volte daqui a pouquinho.</p>
       )}
 
-      {data && data.gifts.length > 0 && grouped && (
+      {searchable && (
+        <div className={styles.search}>
+          <label htmlFor="busca-presente" className="visually-hidden">
+            Buscar um item
+          </label>
+          <input
+            id="busca-presente"
+            type="search"
+            placeholder="Buscar um item…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            autoComplete="off"
+          />
+          {query && (
+            <p className={styles.searchCount} role="status">
+              {gifts.length
+                ? `${gifts.length} ${gifts.length === 1 ? 'item encontrado' : 'itens encontrados'}`
+                : 'Nenhum item com esse nome.'}
+            </p>
+          )}
+        </div>
+      )}
+
+      {data && gifts.length > 0 && grouped && (
         <nav className={styles.rooms} aria-label="Cômodos">
           {groups.map(g => (
             <a key={g.id} href={`#${g.id}`}>
@@ -78,12 +109,14 @@ export default function GiftList({ list }: { list: GiftListName }) {
               {group.name}
             </h2>
           )}
-          <ul className={styles.grid}>
+          {/* Cômodo sem nenhuma foto vira lista compacta: centenas de itens não cabem em cards. */}
+          <ul className={group.gifts.some(g => g.imageUrl) ? styles.grid : styles.compactList}>
             {group.gifts.map((gift, i) => (
               <GiftItem
                 key={gift.id}
                 gift={gift}
                 index={i}
+                compact={!group.gifts.some(g => g.imageUrl)}
                 canPay={Boolean(payments?.enabled)}
                 onGive={() => give(gift)}
               />
@@ -153,8 +186,57 @@ const PLACEHOLDER_TONE = ['toneSand', 'toneBlush', 'tonePaper', 'toneLinen'] as 
 
 const STATUS_LABEL = { reservado: 'Reservado', presenteado: 'Presenteado' } as const
 
-function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; canPay: boolean; onGive: () => void }) {
+const normalize = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+
+function GiftItem({
+  gift,
+  index,
+  compact = false,
+  canPay,
+  onGive,
+}: {
+  gift: Gift
+  index: number
+  compact?: boolean
+  canPay: boolean
+  onGive: () => void
+}) {
   const given = gift.status === 'presenteado'
+
+  // Linha compacta: nome à esquerda, botão à direita (a linha inteira é clicável).
+  if (compact) {
+    const taken = gift.status !== 'disponivel'
+    const canGive = gift.purchaseMode === 'reserva' || (gift.purchaseMode === 'site' && canPay && gift.priceCents != null)
+    return (
+      <li className={[styles.compactItem, taken && styles.taken].filter(Boolean).join(' ')}>
+        <div className={styles.compactText}>
+          <h3 className={styles.compactName}>{gift.name}</h3>
+          {gift.description && <p className={styles.description}>{gift.description}</p>}
+          {gift.priceCents != null && <span className={styles.compactPrice}>{formatBRL(gift.priceCents)}</span>}
+        </div>
+        {taken ? (
+          <span className={styles.compactBadge}>{gift.status === 'presenteado' ? 'Presenteado' : 'Reservado'}</span>
+        ) : canGive ? (
+          <button type="button" className={`${styles.cta} ${styles.ctaSmall}`} onClick={onGive}>
+            {gift.purchaseMode === 'reserva' && !gift.hasLink ? 'Eu vou levar' : 'Presentear'}
+            <span className="visually-hidden"> {gift.name}</span>
+          </button>
+        ) : gift.purchaseMode === 'link' && gift.externalUrl ? (
+          <a
+            className={`${styles.cta} ${styles.ctaSmall} ${styles.ctaOutline}`}
+            href={gift.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver na loja<span className="visually-hidden"> {gift.name} (abre em outra aba)</span>
+          </a>
+        ) : (
+          <span className={styles.soon}>Em breve</span>
+        )}
+      </li>
+    )
+  }
+
 
   return (
     <li
@@ -188,7 +270,7 @@ function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; 
         )}
         {gift.purchaseMode === 'reserva' && gift.status === 'disponivel' && (
           <button type="button" className={styles.cta} onClick={onGive}>
-            Eu vou levar
+            {gift.hasLink ? 'Presentear' : 'Eu vou levar'}
             <span className="visually-hidden"> {gift.name}</span>
           </button>
         )}

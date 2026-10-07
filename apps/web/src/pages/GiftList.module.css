@@ -344,10 +344,14 @@
   scroll-margin-top: 8.5rem;
 }
 
-@media (min-width: 48rem) {
-  .rooms {
-    justify-content: center;
-  }
+/* Centraliza quando cabe; quando não cabe, rola desde o primeiro cômodo
+   (justify-content: center cortaria o começo sem deixar rolar até ele). */
+.rooms > a:first-child {
+  margin-left: auto;
+}
+
+.rooms > a:last-child {
+  margin-right: auto;
 }
 
 .room + .room {
@@ -367,4 +371,128 @@
   flex: 1;
   height: 1px;
   background: var(--line);
+}
+
+/* ── Busca ─────────────────────────────────────────────────────────── */
+.search {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 30rem;
+  margin: 0 auto var(--space-4);
+}
+
+.search input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: 1.0625rem;
+}
+
+.search input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.searchCount {
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+  text-align: center;
+}
+
+/* ── Lista compacta (cômodo sem fotos) ─────────────────────────────── */
+.compactList {
+  list-style: none;
+  padding: 0;
+  border-top: var(--hairline);
+}
+
+.compactItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+  border-bottom: var(--hairline);
+}
+
+.compactItem:has(.cta) {
+  cursor: pointer;
+}
+
+.compactItem:has(.cta):active {
+  background: color-mix(in srgb, var(--surface-warm) 50%, transparent);
+}
+
+.compactItem:has(.cta:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.compactText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.compactName {
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.compactPrice {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--accent);
+}
+
+/* Na lista compacta o botão é contornado: centenas de botões cheios pesariam. */
+.ctaSmall:not(.ctaOutline) {
+  background: transparent;
+  color: var(--accent);
+}
+
+.compactItem:has(.cta):hover .ctaSmall,
+.compactItem:has(.cta):active .ctaSmall {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.ctaSmall {
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.compactBadge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-wine-deep);
+}
+
+.taken .compactName {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+@media (min-width: 48rem) {
+  .compactList {
+    columns: 2;
+    column-gap: var(--space-8);
+    border-top: 0;
+  }
+
+  .compactItem {
+    break-inside: avoid;
+    border-top: var(--hairline);
+    border-bottom: 0;
+  }
 }

@@ -165,3 +165,11 @@
   font-size: var(--fs-small);
   color: var(--color-wine-deep);
 }
+
+.quickLink {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+}

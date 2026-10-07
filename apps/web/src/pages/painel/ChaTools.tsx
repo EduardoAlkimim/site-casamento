@@ -135,26 +135,59 @@ export function RoomsEditor({ list, rooms, counts, apply }: { list: GiftListName
 }
 
 /* ── Colar uma lista ─────────────────────────────────────────────────── */
-type Parsed = { room: string; name: string; priceCents: number | null }
+type Parsed = { room: string; name: string; priceCents: number | null; description?: string }
 
 const BULLET = /^\s*(?:[-–—•*·]|\d+[.)])\s+/
+const CHECKBOX = /^\s*(?:[☐☑□✓✔]|\[\s?[xX]?\])\s*/u
+// Seção numerada, com ou sem emoji: "🍽️ 2. LOUÇAS E MESA".
+const SECTION = /^[^\p{L}\p{N}]*\d{1,2}\.\s+(\S.*)$/u
 // Preço só quando vem marcado: "R$ 180", "- 180", "— 180,00". Evita ler "Kit 3 potes" como R$ 3.
 const PRICE = /\s*(?:[-–—|:]\s*(?:R\$\s*)?|R\$\s*)(\d[\d.]*(?:,\d{1,2})?)\s*(?:reais)?\s*$/i
 
+// "LOUÇAS E MESA 🍽️" → "Louças e mesa"; tira emoji e aspas soltas.
+function roomLabel(raw: string) {
+  const s = raw
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '')
+    .replace(/["“”]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const lower = s === s.toLocaleUpperCase('pt-BR') ? s.toLocaleLowerCase('pt-BR') : s
+  return lower.charAt(0).toLocaleUpperCase('pt-BR') + lower.slice(1)
+}
+
 export function parseList(text: string): Parsed[] {
   const lines = text.split(/\r?\n/).map(l => l.replace(/\s+$/, ''))
+  // Lista com seções numeradas: só elas viram cômodo; subtítulos e comentários
+  // sem marcador ("Pratos", "Caso vocês tenham:") são ignorados.
+  const sectioned = lines.some(l => SECTION.test(l) && !BULLET.test(l))
   const out: Parsed[] = []
   let room = ''
   lines.forEach((line, i) => {
     if (!line.trim()) return
-    const next = lines.slice(i + 1).find(l => l.trim()) ?? ''
-    const isHeader =
-      /^\s*#/.test(line) || /:\s*$/.test(line) || (!BULLET.test(line) && BULLET.test(next) && !PRICE.test(line))
-    if (isHeader) {
-      room = line.replace(/^\s*#+\s*/, '').replace(/:\s*$/, '').trim()
-      return
+    const section = line.match(SECTION)
+    if (sectioned) {
+      if (section && !BULLET.test(line)) {
+        room = roomLabel(section[1])
+        return
+      }
+      if (!BULLET.test(line)) return
+    } else {
+      const next = lines.slice(i + 1).find(l => l.trim()) ?? ''
+      const isHeader =
+        /^\s*#/.test(line) || /:\s*$/.test(line) || (!BULLET.test(line) && BULLET.test(next) && !PRICE.test(line))
+      if (isHeader) {
+        room = roomLabel(line.replace(/^\s*#+\s*/, '').replace(/:\s*$/, ''))
+        return
+      }
     }
-    let name = line.replace(BULLET, '').trim()
+    let name = line.replace(BULLET, '').replace(CHECKBOX, '').trim()
+    // "Cabides infantis — caso futuramente precisem": o comentário vira descrição.
+    let description = ''
+    const note = name.match(/^(.+?)\s+[—–]\s+(\D.*)$/)
+    if (note) {
+      name = note[1]
+      description = note[2].charAt(0).toLocaleUpperCase('pt-BR') + note[2].slice(1)
+    }
     let priceCents: number | null = null
     const m = name.match(PRICE)
     if (m) {
@@ -164,7 +197,7 @@ export function parseList(text: string): Parsed[] {
         name = name.slice(0, m.index).trim()
       }
     }
-    if (name) out.push({ room, name: name.slice(0, 120), priceCents })
+    if (name) out.push({ room, name: name.slice(0, 120), priceCents, ...(description ? { description } : {}) })
   })
   return out
 }
@@ -180,12 +213,20 @@ export function ImportBox({ list, apply }: { list: GiftListName; apply: (path: s
   const run = async () => {
     setBusy(true)
     setResult(null)
-    const r = await apply(`/admin/listas/${list}/importar`, { body: { items } })
-    setBusy(false)
-    if (r) {
-      setResult(`${r.added} ${r.added === 1 ? 'item cadastrado' : 'itens cadastrados'}${r.skipped ? ` · ${r.skipped} já estavam na lista` : ''}.`)
-      setText('')
+    let added = 0
+    let skipped = 0
+    for (let i = 0; i < items.length; i += 400) {
+      const r = await apply(`/admin/listas/${list}/importar`, { body: { items: items.slice(i, i + 400) } })
+      if (!r) {
+        setBusy(false)
+        return
+      }
+      added += r.added
+      skipped += r.skipped
     }
+    setBusy(false)
+    setResult(`${added} ${added === 1 ? 'item cadastrado' : 'itens cadastrados'}${skipped ? ` · ${skipped} já estavam na lista (não repetimos)` : ''}.`)
+    setText('')
   }
 
   if (!open) {

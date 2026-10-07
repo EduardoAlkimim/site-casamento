@@ -28,6 +28,8 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
   const [error, setError] = useState<string>()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [roomFilter, setRoomFilter] = useState<number | 'todos' | 'sem'>('todos')
+  const [onlyNoLink, setOnlyNoLink] = useState(false)
+  const [linking, setLinking] = useState<number | null>(null)
   const list = LISTS.find(l => l.id === active)!
 
   useEffect(() => {
@@ -65,9 +67,12 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
 
   const roomName = (id: number | null) => data?.rooms.find(r => r.id === id)?.name
   const shown =
-    data?.gifts.filter(g =>
-      roomFilter === 'todos' ? true : roomFilter === 'sem' ? g.roomId == null : g.roomId === roomFilter,
+    data?.gifts.filter(
+      g =>
+        (roomFilter === 'todos' ? true : roomFilter === 'sem' ? g.roomId == null : g.roomId === roomFilter) &&
+        (!onlyNoLink || (g.purchaseMode !== 'site' && !g.externalUrl)),
     ) ?? []
+  const noLinkCount = data?.gifts.filter(g => g.purchaseMode !== 'site' && !g.externalUrl).length ?? 0
   const usesRooms = active === 'cha' || Boolean(data?.rooms.length)
 
   return (
@@ -137,6 +142,12 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
               ))}
             </div>
           )}
+          {noLinkCount > 0 && (
+            <label className={base.radio}>
+              <input type="checkbox" checked={onlyNoLink} onChange={e => setOnlyNoLink(e.target.checked)} />
+              Mostrar só os {noLinkCount} sem link de loja
+            </label>
+          )}
 
           {editing === 'new' && (
             <GiftForm
@@ -162,7 +173,8 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                     <span className={base.rowMeta}>
                       {[
                         roomName(gift.roomId),
-                        gift.priceCents != null ? formatBRL(gift.priceCents) : 'Sem valor',
+                        gift.priceCents != null ? formatBRL(gift.priceCents) : null,
+                        gift.purchaseMode !== 'site' ? (gift.externalUrl ? 'com link' : 'sem link') : null,
                         STATUS.find(s => s.id === gift.status)!.label,
                       ]
                         .filter(Boolean)
@@ -186,6 +198,11 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                       }
                     >
                       Liberar reserva
+                    </Button>
+                  )}
+                  {gift.purchaseMode !== 'site' && (
+                    <Button variant="quiet" onClick={() => setLinking(linking === gift.id ? null : gift.id)}>
+                      {gift.externalUrl ? 'Trocar link' : 'Colocar link'}
                     </Button>
                   )}
                   <Button variant="quiet" onClick={() => setEditing(editing === gift.id ? null : gift.id)}>
@@ -218,6 +235,17 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                     Apagar
                   </Button>
                 </span>
+                {linking === gift.id && (
+                  <QuickLink
+                    gift={gift}
+                    onCancel={() => setLinking(null)}
+                    onSave={async url => {
+                      const ok = await apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body: { externalUrl: url } })
+                      if (ok) setLinking(null)
+                      return ok
+                    }}
+                  />
+                )}
                 {editing === gift.id && (
                   <GiftForm
                     gift={gift}
@@ -363,6 +391,7 @@ function GiftForm({
     const next: typeof errors = {}
     if (Number.isNaN(priceCents)) next.price = 'Use só números, ex.: 349,90.'
     if (mode === 'link' && !/^https?:\/\/\S+$/.test(url.trim())) next.url = 'Cole o link completo da loja, começando com https://'
+    if (mode === 'reserva' && url.trim() && !/^https?:\/\/\S+$/.test(url.trim())) next.url = 'O link precisa começar com https://'
     setErrors(next)
     if (next.price || next.url) return
     setSaving(true)
@@ -373,7 +402,7 @@ function GiftForm({
       priceCents: priceCents as number | null,
       status,
       purchaseMode: mode,
-      externalUrl: mode === 'link' ? url.trim() : null,
+      externalUrl: mode !== 'site' && url.trim() ? url.trim() : null,
       roomId,
     })
     setSaving(false)
@@ -460,9 +489,10 @@ function GiftForm({
           Link de uma loja
         </label>
       </fieldset>
-      {mode === 'link' && (
+      {mode !== 'site' && (
         <Field
-          label="Link da loja"
+          label={mode === 'reserva' ? 'Link da loja (opcional)' : 'Link da loja'}
+          hint={mode === 'reserva' ? 'Aparece só depois que a pessoa reserva — assim ninguém compra repetido.' : undefined}
           type="url"
           inputMode="url"
           placeholder="https://"
@@ -476,6 +506,51 @@ function GiftForm({
         <Button type="submit" loading={saving} disabled={uploading}>
           {gift ? 'Salvar' : 'Adicionar à lista'}
         </Button>
+        <Button variant="quiet" onClick={onCancel}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+/* Atalho para colar o link da loja sem abrir o formulário inteiro. */
+function QuickLink({ gift, onSave, onCancel }: { gift: Gift; onSave: (url: string | null) => Promise<boolean>; onCancel: () => void }) {
+  const [url, setUrl] = useState(gift.externalUrl ?? '')
+  const [error, setError] = useState<string>()
+  const [saving, setSaving] = useState(false)
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    const value = url.trim()
+    if (value && !/^https?:\/\/\S+$/.test(value)) return setError('Cole o link completo, começando com https://')
+    setError(undefined)
+    setSaving(true)
+    await onSave(value || null)
+    setSaving(false)
+  }
+
+  return (
+    <form className={styles.quickLink} onSubmit={submit}>
+      <Field
+        label={`Link da loja — ${gift.name}`}
+        type="url"
+        inputMode="url"
+        placeholder="https://"
+        autoFocus
+        value={url}
+        error={error}
+        onChange={e => setUrl(e.target.value)}
+      />
+      <div className={base.formActions}>
+        <Button type="submit" loading={saving}>
+          Salvar link
+        </Button>
+        {gift.externalUrl && (
+          <Button variant="quiet" onClick={() => onSave(null)}>
+            Tirar link
+          </Button>
+        )}
         <Button variant="quiet" onClick={onCancel}>
           Cancelar
         </Button>

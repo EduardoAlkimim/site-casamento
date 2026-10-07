@@ -45,6 +45,8 @@ export type Gift = {
   purchaseMode: 'site' | 'link' | 'reserva'
   externalUrl: string | null
   roomId: number | null
+  /** Item de reserva com link de loja (o link só chega depois de reservar). */
+  hasLink?: boolean
   /** Só vêm para os noivos (painel). */
   reservedBy?: string | null
   reservedContact?: string | null

@@ -39,6 +39,9 @@ const listGifts = (list: List, forAdmin = false) =>
   ).map(({ reservedBy, reservedContact, reservedAt, ...g }) => ({
     ...g,
     imageUrl: imageUrl(g.image),
+    // Item de reserva: o link da loja só é entregue depois que a pessoa reserva
+    // (senão dava para comprar sem reservar e o casal ganhava repetido).
+    ...(g.purchaseMode === 'reserva' && !forAdmin ? { externalUrl: null, hasLink: Boolean(g.externalUrl) } : {}),
     ...(forAdmin ? { reservedBy, reservedContact, reservedAt } : {}),
   }))
 
@@ -128,9 +131,9 @@ export async function giftRoutes(app: FastifyInstance) {
       },
     },
     async (req, reply) => {
-      const gift = db.prepare('SELECT id, list, purchase_mode AS mode FROM gifts WHERE id = ?').get(Number(req.params.id)) as
-        | { id: number; list: List; mode: Mode }
-        | undefined
+      const gift = db
+        .prepare('SELECT id, list, purchase_mode AS mode, external_url AS url FROM gifts WHERE id = ?')
+        .get(Number(req.params.id)) as { id: number; list: List; mode: Mode; url: string | null } | undefined
       if (!gift) return reply.code(404).send({ error: 'Item não encontrado.' })
       if (!assertUnlocked(LISTS[gift.list], req, reply)) return reply
       if (gift.mode !== 'reserva') return reply.code(409).send({ error: 'Este item não é reservado pelo site.' })
@@ -142,7 +145,7 @@ export async function giftRoutes(app: FastifyInstance) {
         )
         .run(req.body.name.trim(), (req.body.contact ?? '').trim() || null, gift.id)
       if (r.changes === 0) return reply.code(409).send({ error: 'Alguém acabou de reservar este item. Escolha outro?' })
-      return { ok: true }
+      return { ok: true, url: gift.url }
     },
   )
 

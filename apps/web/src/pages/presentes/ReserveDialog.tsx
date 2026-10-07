@@ -17,6 +17,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [storeUrl, setStoreUrl] = useState<string | null>(null)
 
   useEffect(() => {
     dialogRef.current?.showModal()
@@ -29,7 +30,10 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
     setBusy(true)
     setError(null)
     try {
-      await api(`/listas/presentes/${gift.id}/reservar`, { body: { name: name.trim(), contact: contact.trim() } })
+      const r = await api<{ url: string | null }>(`/listas/presentes/${gift.id}/reservar`, {
+        body: { name: name.trim(), contact: contact.trim() },
+      })
+      setStoreUrl(r.url)
       setDone(true)
     } catch (err) {
       setError((err as Error).message)
@@ -42,7 +46,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
     <dialog ref={dialogRef} className={styles.sheet} aria-labelledby="reserve-title" onClose={() => onClose(done)}>
       <div className={styles.inner}>
         <div className={styles.top}>
-          <Eyebrow>{done ? 'Combinado' : 'Eu vou levar'}</Eyebrow>
+          <Eyebrow>{done ? 'Combinado' : gift.hasLink ? 'Presentear' : 'Eu vou levar'}</Eyebrow>
           <button type="button" className={styles.close} onClick={() => dialogRef.current?.close()} aria-label="Fechar">
             <span />
             <span />
@@ -64,15 +68,29 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
               Combinado, <em>{name.trim().split(' ')[0]}!</em>
             </p>
             <p className={styles.note}>
-              Este item agora está reservado para você — ninguém mais vai escolhê-lo. É só levar no dia do chá.
+              Este item agora está reservado para você — ninguém mais vai escolhê-lo.
+              {storeUrl ? ' Agora é só comprar na loja e levar no dia do chá.' : ' É só levar no dia do chá.'}
             </p>
-            <Button variant="outline" onClick={() => dialogRef.current?.close()}>
+            {storeUrl && (
+              <a className={styles.storeLink} href={storeUrl} target="_blank" rel="noopener noreferrer sponsored">
+                Ir para a loja
+                <span className="visually-hidden"> (abre em outra aba)</span>
+                <svg viewBox="0 0 12 12" aria-hidden="true">
+                  <path d="M3 9 9 3M4 3h5v5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              </a>
+            )}
+            <Button variant={storeUrl ? 'quiet' : 'outline'} onClick={() => dialogRef.current?.close()}>
               Voltar para a lista
             </Button>
           </div>
         ) : (
           <form className={styles.body} onSubmit={submit} noValidate>
-            <p className={styles.note}>Reserve o item para que ninguém leve igual. Você compra onde preferir e traz no dia.</p>
+            <p className={styles.note}>
+              {gift.hasLink
+                ? 'Primeiro reserve o item para que ninguém dê igual. Em seguida, mostramos o link da loja para você comprar.'
+                : 'Reserve o item para que ninguém leve igual. Você compra onde preferir e traz no dia.'}
+            </p>
             <Field label="Seu nome" required autoComplete="name" value={name} error={nameError} onChange={e => setName(e.target.value)} />
             <Field
               label="WhatsApp ou e-mail (opcional)"
@@ -83,7 +101,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
             />
             {error && <p className={styles.error} role="alert">{error}</p>}
             <Button type="submit" loading={busy} className={styles.cta}>
-              Reservar para mim
+              {gift.hasLink ? 'Reservar e ir para a loja' : 'Reservar para mim'}
             </Button>
           </form>
         )}
