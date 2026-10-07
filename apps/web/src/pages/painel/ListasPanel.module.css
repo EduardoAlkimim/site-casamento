@@ -173,3 +173,12 @@
   border: 1px solid var(--line-soft);
   background: var(--surface);
 }
+
+.filterLabel {
+  margin-bottom: calc(var(--space-2) * -1);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-soft);
+}

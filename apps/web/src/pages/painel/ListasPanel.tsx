@@ -29,6 +29,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [roomFilter, setRoomFilter] = useState<number | 'todos' | 'sem'>('todos')
   const [onlyNoLink, setOnlyNoLink] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<GiftStatus | 'todos'>('todos')
   const [linking, setLinking] = useState<number | null>(null)
   const list = LISTS.find(l => l.id === active)!
 
@@ -36,6 +37,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
     setData(null)
     setEditing(null)
     setRoomFilter('todos')
+    setStatusFilter('todos')
     api<GiftListData>(`/admin/listas/${active}`)
       .then(setData)
       .catch(err => setError(err.message))
@@ -70,7 +72,8 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
     data?.gifts.filter(
       g =>
         (roomFilter === 'todos' ? true : roomFilter === 'sem' ? g.roomId == null : g.roomId === roomFilter) &&
-        (!onlyNoLink || (g.purchaseMode !== 'site' && !g.externalUrl)),
+        (!onlyNoLink || (g.purchaseMode !== 'site' && !g.externalUrl)) &&
+        (statusFilter === 'todos' || g.status === statusFilter),
     ) ?? []
   const noLinkCount = data?.gifts.filter(g => g.purchaseMode !== 'site' && !g.externalUrl).length ?? 0
   const usesRooms = active === 'cha' || Boolean(data?.rooms.length)
@@ -127,7 +130,25 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
 
           <ImportBox list={active} apply={importList} />
 
+          <p className={styles.filterLabel} aria-hidden="true">Situação</p>
+          <div className={styles.filter} role="group" aria-label="Filtrar por situação">
+            {(
+              [
+                ['todos', 'Todos'],
+                ['disponivel', 'Disponíveis'],
+                ['reservado', 'Reservados'],
+                ['presenteado', 'Presenteados'],
+              ] as const
+            ).map(([id, label]) => (
+              <button key={id} type="button" aria-pressed={statusFilter === id} onClick={() => setStatusFilter(id)}>
+                {label} <span>{id === 'todos' ? data.gifts.length : data.gifts.filter(g => g.status === id).length}</span>
+              </button>
+            ))}
+          </div>
+
           {usesRooms && data.rooms.length > 0 && (
+            <>
+            <p className={styles.filterLabel} aria-hidden="true">Cômodo</p>
             <div className={styles.filter} role="group" aria-label="Filtrar por cômodo">
               {(
                 [
@@ -141,6 +162,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                 </button>
               ))}
             </div>
+            </>
           )}
           {noLinkCount > 0 && (
             <label className={base.radio}>
@@ -163,6 +185,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
             />
           )}
 
+          {shown.length === 0 && <p className={base.help}>Nenhum item com esse filtro.</p>}
           <ul className={base.rows}>
             {shown.map((gift, i) => (
               <li key={gift.id} className={styles.giftRow}>
