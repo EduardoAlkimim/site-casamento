@@ -46,7 +46,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
     <dialog ref={dialogRef} className={styles.sheet} aria-labelledby="reserve-title" onClose={() => onClose(done)}>
       <div className={styles.inner}>
         <div className={styles.top}>
-          <Eyebrow>{done ? 'Combinado' : gift.hasLink ? 'Presentear' : 'Eu vou levar'}</Eyebrow>
+          <Eyebrow>{done ? 'Reservado para você' : gift.hasLink ? 'Reservar e comprar' : 'Eu vou levar'}</Eyebrow>
           <button type="button" className={styles.close} onClick={() => dialogRef.current?.close()} aria-label="Fechar">
             <span />
             <span />
@@ -68,12 +68,13 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
               Combinado, <em>{name.trim().split(' ')[0]}!</em>
             </p>
             <p className={styles.note}>
-              Este item agora está reservado para você — ninguém mais vai escolhê-lo.
-              {storeUrl ? ' Agora é só comprar na loja e levar no dia do chá.' : ' É só levar no dia do chá.'}
+              {storeUrl
+                ? 'O item já está reservado no seu nome — ninguém mais vai escolhê-lo. Seu link de compra está pronto:'
+                : 'O item já está reservado no seu nome — ninguém mais vai escolhê-lo. É só comprar onde preferir e levar no dia do chá.'}
             </p>
             {storeUrl && (
               <a className={styles.storeLink} href={storeUrl} target="_blank" rel="noopener noreferrer sponsored">
-                Ir para a loja
+                Comprar na loja
                 <span className="visually-hidden"> (abre em outra aba)</span>
                 <svg viewBox="0 0 12 12" aria-hidden="true">
                   <path d="M3 9 9 3M4 3h5v5" fill="none" stroke="currentColor" strokeWidth="1.2" />
@@ -86,11 +87,15 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
           </div>
         ) : (
           <form className={styles.body} onSubmit={submit} noValidate>
-            <p className={styles.note}>
-              {gift.hasLink
-                ? 'Primeiro reserve o item para que ninguém dê igual. Em seguida, mostramos o link da loja para você comprar.'
-                : 'Reserve o item para que ninguém leve igual. Você compra onde preferir e traz no dia.'}
-            </p>
+            {gift.hasLink ? (
+              <ol className={styles.steps}>
+                <li>Você reserva o item com seu nome — ninguém mais poderá escolhê-lo.</li>
+                <li>Geramos na hora o <strong>link de compra</strong> da loja para você.</li>
+                <li>Você compra pelo link e leva no dia do chá.</li>
+              </ol>
+            ) : (
+              <p className={styles.note}>Reserve o item para que ninguém leve igual. Você compra onde preferir e traz no dia.</p>
+            )}
             <Field label="Seu nome" required autoComplete="name" value={name} error={nameError} onChange={e => setName(e.target.value)} />
             <Field
               label="WhatsApp ou e-mail (opcional)"
@@ -101,7 +106,7 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
             />
             {error && <p className={styles.error} role="alert">{error}</p>}
             <Button type="submit" loading={busy} className={styles.cta}>
-              {gift.hasLink ? 'Reservar e ir para a loja' : 'Reservar para mim'}
+              {gift.hasLink ? 'Reservar e gerar link' : 'Reservar para mim'}
             </Button>
           </form>
         )}

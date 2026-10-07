@@ -68,6 +68,10 @@ export default function GiftList({ list }: { list: GiftListName }) {
         <p className={styles.state}>A lista está sendo montada. Volte daqui a pouquinho.</p>
       )}
 
+      {data && data.gifts.some(g => g.purchaseMode === 'reserva') && (
+        <HowItWorks withLinks={data.gifts.some(g => g.purchaseMode === 'reserva' && g.hasLink)} />
+      )}
+
       {searchable && (
         <div className={styles.search}>
           <label htmlFor="busca-presente" className="visually-hidden">
@@ -148,6 +152,42 @@ export default function GiftList({ list }: { list: GiftListName }) {
   )
 }
 
+/* Explica a reserva antes de a pessoa escolher: assim ninguém se surpreende
+   com o link da loja, e fica claro por que reservar evita presente repetido. */
+function HowItWorks({ withLinks }: { withLinks: boolean }) {
+  const steps = withLinks
+    ? [
+        ['Escolha um item', 'Use a busca ou os cômodos.'],
+        ['Reserve com seu nome', 'Na hora, ninguém mais consegue escolher o mesmo item.'],
+        ['Receba o link de compra', 'Geramos o link da loja para você comprar e levar no dia do chá.'],
+      ]
+    : [
+        ['Escolha um item', 'Use a busca ou os cômodos.'],
+        ['Reserve com seu nome', 'Na hora, ninguém mais consegue escolher o mesmo item.'],
+        ['Compre e leve no dia', 'Você compra onde preferir e traz no dia do chá.'],
+      ]
+  return (
+    <section className={styles.how} aria-labelledby="como-funciona">
+      <h2 id="como-funciona" className={styles.howTitle}>
+        Como <em>funciona</em>
+      </h2>
+      <ol className={styles.howSteps}>
+        {steps.map(([title, text], i) => (
+          <li key={title}>
+            <span className={styles.howNum} aria-hidden="true">
+              {i + 1}
+            </span>
+            <span className={styles.howText}>
+              <strong>{title}</strong>
+              {text}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 /* Data, horário, local e endereço do chá — aparece quando algo foi preenchido. */
 function EventDetails({ event }: { event: ChaEvent }) {
   const rows = [
@@ -218,7 +258,7 @@ function GiftItem({
           <span className={styles.compactBadge}>{gift.status === 'presenteado' ? 'Presenteado' : 'Reservado'}</span>
         ) : canGive ? (
           <button type="button" className={`${styles.cta} ${styles.ctaSmall}`} onClick={onGive}>
-            {gift.purchaseMode === 'reserva' && !gift.hasLink ? 'Eu vou levar' : 'Presentear'}
+            {gift.purchaseMode === 'reserva' ? (gift.hasLink ? 'Reservar e comprar' : 'Eu vou levar') : 'Presentear'}
             <span className="visually-hidden"> {gift.name}</span>
           </button>
         ) : gift.purchaseMode === 'link' && gift.externalUrl ? (
@@ -270,7 +310,7 @@ function GiftItem({
         )}
         {gift.purchaseMode === 'reserva' && gift.status === 'disponivel' && (
           <button type="button" className={styles.cta} onClick={onGive}>
-            {gift.hasLink ? 'Presentear' : 'Eu vou levar'}
+            {gift.hasLink ? 'Reservar e comprar' : 'Eu vou levar'}
             <span className="visually-hidden"> {gift.name}</span>
           </button>
         )}
