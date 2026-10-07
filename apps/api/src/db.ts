@@ -169,17 +169,64 @@ const migrations: string[] = [
   UPDATE pages SET intro = 'Texto provisório: uma palavra, uma lembrança, um conselho. Só nós dois vamos ler.'
     WHERE slug = 'recados' AND intro LIKE 'Texto provisório:%';
   `,
+  `-- fk-off
+  -- Chá de Panela: cômodos editáveis, reserva "eu vou levar" e dados do evento.
+  CREATE TABLE gift_rooms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    list TEXT NOT NULL CHECK (list IN ('casamento', 'cha')),
+    position INTEGER NOT NULL,
+    name TEXT NOT NULL
+  );
+  INSERT INTO gift_rooms (list, position, name) VALUES
+    ('cha', 1, 'Cozinha'), ('cha', 2, 'Sala'), ('cha', 3, 'Quarto'), ('cha', 4, 'Banheiro'), ('cha', 5, 'Lavanderia');
+
+  CREATE TABLE gifts_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    list TEXT NOT NULL CHECK (list IN ('casamento', 'cha')),
+    position INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    image TEXT,
+    price_cents INTEGER CHECK (price_cents IS NULL OR price_cents > 0),
+    status TEXT NOT NULL DEFAULT 'disponivel' CHECK (status IN ('disponivel', 'reservado', 'presenteado')),
+    purchase_mode TEXT NOT NULL DEFAULT 'site' CHECK (purchase_mode IN ('site', 'link', 'reserva')),
+    external_url TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    room_id INTEGER REFERENCES gift_rooms(id) ON DELETE SET NULL,
+    reserved_by TEXT,
+    reserved_contact TEXT,
+    reserved_at TEXT
+  );
+  INSERT INTO gifts_new (id, list, position, name, description, image, price_cents, status, purchase_mode, external_url, created_at)
+    SELECT id, list, position, name, description, image, price_cents, status, purchase_mode, external_url, created_at FROM gifts;
+  DROP TABLE gifts;
+  ALTER TABLE gifts_new RENAME TO gifts;
+  CREATE INDEX gifts_list_position ON gifts (list, position);
+
+  INSERT OR IGNORE INTO settings (key, value) VALUES
+    ('cha.date', ''), ('cha.time', ''), ('cha.venue', ''), ('cha.address', '');
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }
 for (let v = current; v < migrations.length; v++) {
+  // Migração que recria tabela referenciada precisa das chaves estrangeiras
+  // desligadas (senão o DROP limparia as referências). Marcada com "-- fk-off".
+  const fkOff = migrations[v].trimStart().startsWith('-- fk-off')
+  if (fkOff) db.exec('PRAGMA foreign_keys = OFF')
   db.exec('BEGIN')
   try {
     db.exec(migrations[v])
+    if (fkOff) {
+      const broken = db.prepare('PRAGMA foreign_key_check').all()
+      if (broken.length) throw new Error(`migração ${v + 1}: referências quebradas ${JSON.stringify(broken)}`)
+    }
     db.exec(`PRAGMA user_version = ${v + 1}`)
     db.exec('COMMIT')
   } catch (err) {
     db.exec('ROLLBACK')
     throw err
+  } finally {
+    if (fkOff) db.exec('PRAGMA foreign_keys = ON')
   }
 }

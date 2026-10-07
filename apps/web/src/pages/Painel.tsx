@@ -76,11 +76,12 @@ const SECTIONS: Section[] = [
   { slug: 'inicio', label: 'Página inicial', group: 'O site', num: 'II', render: () => <InicioPanel /> },
   { slug: 'historia', label: 'Nossa História', group: 'O site', num: 'III', render: () => <HistoriaPanel /> },
   { slug: 'informacoes', label: 'Informações', group: 'O site', num: 'IV', render: () => <InformacoesPanel /> },
-  { slug: 'presentes', label: 'Listas de presentes', group: 'Presentes', num: 'V', render: () => <ListasPanel /> },
-  { slug: 'recebidos', label: 'Presentes recebidos', group: 'Presentes', num: 'VI', render: () => <RecebidosPanel /> },
-  { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VII', render: () => <RecadosPanel /> },
-  { slug: 'padrinhos', label: 'Padrinhos e tags NFC', group: 'Convidados', num: 'VIII', render: () => <PadrinhosPanel /> },
-  { slug: 'manual', label: 'Manual do Padrinho', group: 'Convidados', num: 'IX', render: () => <ManualPanel /> },
+  { slug: 'presentes', label: 'Lista do casamento', group: 'Presentes', num: 'V', render: () => <ListasPanel /> },
+  { slug: 'cha', label: 'Chá de Panela', group: 'Presentes', num: 'VI', render: () => <ListasPanel initial="cha" /> },
+  { slug: 'recebidos', label: 'Presentes recebidos', group: 'Presentes', num: 'VII', render: () => <RecebidosPanel /> },
+  { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VIII', render: () => <RecadosPanel /> },
+  { slug: 'padrinhos', label: 'Padrinhos e tags NFC', group: 'Convidados', num: 'IX', render: () => <PadrinhosPanel /> },
+  { slug: 'manual', label: 'Manual do Padrinho', group: 'Convidados', num: 'X', render: () => <ManualPanel /> },
 ]
 
 function Dashboard() {
@@ -107,6 +108,8 @@ type Summary = {
   recebidos: number
   padrinhos: number
   presentes: number
+  cha: number
+  chaReservados: number
 }
 
 function Overview() {
@@ -122,7 +125,7 @@ function Overview() {
       safe(api<{ payments: { status: string; amountCents: number }[] }>('/admin/pagamentos'), { payments: [] }),
       safe(api<{ padrinhos: unknown[] }>('/admin/padrinhos'), { padrinhos: [] }),
       safe(api<{ gifts: unknown[] }>('/admin/listas/casamento'), { gifts: [] }),
-      safe(api<{ gifts: unknown[] }>('/admin/listas/cha'), { gifts: [] }),
+      safe(api<{ gifts: { status: string }[] }>('/admin/listas/cha'), { gifts: [] }),
     ]).then(([p, r, pay, pad, gc, gh]) => {
       const approved = pay.payments.filter(x => x.status === 'approved')
       setSum({
@@ -131,7 +134,9 @@ function Overview() {
         recebidoCents: approved.reduce((t, x) => t + x.amountCents, 0),
         recebidos: approved.length,
         padrinhos: pad.padrinhos.length,
-        presentes: gc.gifts.length + gh.gifts.length,
+        presentes: gc.gifts.length,
+        cha: gh.gifts.length,
+        chaReservados: gh.gifts.filter(g => g.status === 'reservado').length,
       })
     })
   }, [])
@@ -160,6 +165,12 @@ function Overview() {
         return { text: 'Blocos e perguntas' }
       case 'presentes':
         return { text: plural(sum.presentes, 'presente', 'presentes') }
+      case 'cha':
+        return {
+          text: sum.cha
+            ? `${plural(sum.cha, 'item', 'itens')} · ${plural(sum.chaReservados, 'reservado', 'reservados')}`
+            : 'Lista por cômodos — comece colando a lista',
+        }
       case 'recebidos':
         return { text: sum.recebidos ? `${formatBRL(sum.recebidoCents)} em ${plural(sum.recebidos, 'presente', 'presentes')}` : 'Nenhum ainda' }
       case 'recados':

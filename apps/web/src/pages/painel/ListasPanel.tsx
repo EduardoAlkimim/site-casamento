@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { api, uploadImage, type Gift, type GiftListData, type GiftListName, type GiftStatus } from '../../lib/api'
+import { api, uploadImage, type Gift, type GiftListData, type GiftListName, type GiftRoom, type GiftStatus } from '../../lib/api'
 import { useAccess } from '../../lib/access'
 import { centsToInput, formatBRL, parseBRL } from '../../lib/money'
 import { resizeImage } from '../../lib/resizeImage'
@@ -9,6 +9,7 @@ import { Field } from '../../design-system/components/Field'
 import { Eyebrow } from '../../design-system/components/Ornaments'
 import base from '../Painel.module.css'
 import styles from './ListasPanel.module.css'
+import { EventEditor, ImportBox, RoomsEditor, roomCounts } from './ChaTools'
 
 const LISTS: { id: GiftListName; label: string; slug: string; path: string }[] = [
   { id: 'casamento', label: 'Casamento', slug: 'presentes', path: '/presentes' },
@@ -21,16 +22,18 @@ const STATUS: { id: GiftStatus; label: string }[] = [
   { id: 'presenteado', label: 'Presenteado' },
 ]
 
-export function ListasPanel() {
-  const [active, setActive] = useState<GiftListName>('casamento')
+export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName }) {
+  const [active, setActive] = useState<GiftListName>(initial)
   const [data, setData] = useState<GiftListData | null>(null)
   const [error, setError] = useState<string>()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
+  const [roomFilter, setRoomFilter] = useState<number | 'todos' | 'sem'>('todos')
   const list = LISTS.find(l => l.id === active)!
 
   useEffect(() => {
     setData(null)
     setEditing(null)
+    setRoomFilter('todos')
     api<GiftListData>(`/admin/listas/${active}`)
       .then(setData)
       .catch(err => setError(err.message))
@@ -39,14 +42,33 @@ export function ListasPanel() {
   const apply = async (path: string, init: { method?: string; body?: unknown }) => {
     setError(undefined)
     try {
-      const d = await api<{ gifts: Gift[] }>(path, init)
-      setData(prev => (prev ? { ...prev, gifts: d.gifts } : prev))
+      const d = await api<Partial<GiftListData>>(path, init)
+      setData(prev => (prev ? { ...prev, ...d } : prev))
       return true
     } catch (err) {
       setError((err as Error).message)
       return false
     }
   }
+
+  const importList = async (path: string, init: { method?: string; body?: unknown }) => {
+    setError(undefined)
+    try {
+      const d = await api<GiftListData & { added: number; skipped: number }>(path, init)
+      setData(prev => (prev ? { ...prev, ...d } : prev))
+      return { added: d.added, skipped: d.skipped }
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  const roomName = (id: number | null) => data?.rooms.find(r => r.id === id)?.name
+  const shown =
+    data?.gifts.filter(g =>
+      roomFilter === 'todos' ? true : roomFilter === 'sem' ? g.roomId == null : g.roomId === roomFilter,
+    ) ?? []
+  const usesRooms = active === 'cha' || Boolean(data?.rooms.length)
 
   return (
     <section className={base.block} aria-labelledby="listas">
@@ -77,6 +99,11 @@ export function ListasPanel() {
         />
       )}
 
+      {data?.event && (
+        <EventEditor event={data.event} onSaved={event => setData(prev => (prev ? { ...prev, event } : prev))} />
+      )}
+      {data && usesRooms && <RoomsEditor list={active} rooms={data.rooms} counts={roomCounts(data)} apply={apply} />}
+
       {error && <p className={base.error} role="alert">{error}</p>}
       {!data && !error && <p className={base.help}>Carregando…</p>}
 
@@ -93,8 +120,29 @@ export function ListasPanel() {
             )}
           </div>
 
+          <ImportBox list={active} apply={importList} />
+
+          {usesRooms && data.rooms.length > 0 && (
+            <div className={styles.filter} role="group" aria-label="Filtrar por cômodo">
+              {(
+                [
+                  ['todos', 'Todos', data.gifts.length],
+                  ...data.rooms.map(r => [r.id, r.name, data.gifts.filter(g => g.roomId === r.id).length] as const),
+                  ['sem', 'Sem cômodo', data.gifts.filter(g => g.roomId == null).length],
+                ] as const
+              ).map(([id, label, n]) => (
+                <button key={String(id)} type="button" aria-pressed={roomFilter === id} onClick={() => setRoomFilter(id as typeof roomFilter)}>
+                  {label} <span>{n}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {editing === 'new' && (
             <GiftForm
+              rooms={data.rooms}
+              defaultMode={active === 'cha' ? 'reserva' : 'site'}
+              defaultRoom={typeof roomFilter === 'number' ? roomFilter : null}
               onCancel={() => setEditing(null)}
               onSave={async body => {
                 const ok = await apply(`/admin/listas/${active}/presentes`, { body })
@@ -105,19 +153,41 @@ export function ListasPanel() {
           )}
 
           <ul className={base.rows}>
-            {data.gifts.map((gift, i) => (
+            {shown.map((gift, i) => (
               <li key={gift.id} className={styles.giftRow}>
                 <div className={styles.summary}>
                   <span className={styles.thumb}>{gift.imageUrl && <img src={gift.imageUrl} alt="" />}</span>
                   <span className={base.rowMain}>
                     <span className={styles.giftName}>{gift.name}</span>
                     <span className={base.rowMeta}>
-                      {gift.priceCents != null ? formatBRL(gift.priceCents) : 'Sem valor'} ·{' '}
-                      {STATUS.find(s => s.id === gift.status)!.label}
+                      {[
+                        roomName(gift.roomId),
+                        gift.priceCents != null ? formatBRL(gift.priceCents) : 'Sem valor',
+                        STATUS.find(s => s.id === gift.status)!.label,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
+                    {gift.reservedBy && (
+                      <span className={styles.reserved}>
+                        Vai levar: <strong>{gift.reservedBy}</strong>
+                        {gift.reservedContact && <> · {gift.reservedContact}</>}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <span className={base.rowActions}>
+                  {gift.status === 'reservado' && (
+                    <Button
+                      variant="quiet"
+                      onClick={() =>
+                        confirm(`Liberar “${gift.name}”? Ele volta a ficar disponível para outra pessoa.`) &&
+                        apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body: { status: 'disponivel' } })
+                      }
+                    >
+                      Liberar reserva
+                    </Button>
+                  )}
                   <Button variant="quiet" onClick={() => setEditing(editing === gift.id ? null : gift.id)}>
                     {editing === gift.id ? 'Fechar' : 'Editar'}
                   </Button>
@@ -131,7 +201,7 @@ export function ListasPanel() {
                   </Button>
                   <Button
                     variant="quiet"
-                    disabled={i === data.gifts.length - 1}
+                    disabled={i === shown.length - 1}
                     aria-label={`Descer ${gift.name}`}
                     onClick={() => apply(`/admin/presentes/${gift.id}/mover`, { body: { direction: 'down' } })}
                   >
@@ -151,6 +221,9 @@ export function ListasPanel() {
                 {editing === gift.id && (
                   <GiftForm
                     gift={gift}
+                    rooms={data.rooms}
+                    defaultMode={active === 'cha' ? 'reserva' : 'site'}
+                    defaultRoom={null}
                     onCancel={() => setEditing(null)}
                     onSave={async body => {
                       const ok = await apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body })
@@ -231,16 +304,34 @@ type GiftBody = {
   image: string | null
   priceCents: number | null
   status: GiftStatus
-  purchaseMode: 'site' | 'link'
+  purchaseMode: Mode
   externalUrl: string | null
+  roomId: number | null
 }
 
-function GiftForm({ gift, onSave, onCancel }: { gift?: Gift; onSave: (b: GiftBody) => Promise<boolean>; onCancel: () => void }) {
+type Mode = 'site' | 'link' | 'reserva'
+
+function GiftForm({
+  gift,
+  rooms,
+  defaultMode,
+  defaultRoom,
+  onSave,
+  onCancel,
+}: {
+  gift?: Gift
+  rooms: GiftRoom[]
+  defaultMode: Mode
+  defaultRoom: number | null
+  onSave: (b: GiftBody) => Promise<boolean>
+  onCancel: () => void
+}) {
   const [name, setName] = useState(gift?.name ?? '')
   const [description, setDescription] = useState(gift?.description ?? '')
   const [price, setPrice] = useState(centsToInput(gift?.priceCents ?? null))
   const [status, setStatus] = useState<GiftStatus>(gift?.status ?? 'disponivel')
-  const [mode, setMode] = useState<'site' | 'link'>(gift?.purchaseMode ?? 'site')
+  const [mode, setMode] = useState<Mode>(gift?.purchaseMode ?? defaultMode)
+  const [roomId, setRoomId] = useState<number | null>(gift ? gift.roomId : defaultRoom)
   const [url, setUrl] = useState(gift?.externalUrl ?? '')
   const [image, setImage] = useState<{ name: string | null; url: string | null }>({
     name: gift?.image ?? null,
@@ -283,6 +374,7 @@ function GiftForm({ gift, onSave, onCancel }: { gift?: Gift; onSave: (b: GiftBod
       status,
       purchaseMode: mode,
       externalUrl: mode === 'link' ? url.trim() : null,
+      roomId,
     })
     setSaving(false)
   }
@@ -328,6 +420,22 @@ function GiftForm({ gift, onSave, onCancel }: { gift?: Gift; onSave: (b: GiftBod
         onChange={e => setPrice(e.target.value)}
       />
 
+      {rooms.length > 0 && (
+        <label className={styles.selectField}>
+          <span className={styles.selectLabel}>Cômodo</span>
+          <select
+            className={styles.select}
+            value={roomId ?? ''}
+            onChange={e => setRoomId(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">Sem cômodo</option>
+            {rooms.map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <label className={styles.selectField}>
         <span className={styles.selectLabel}>Situação</span>
         <select className={styles.select} value={status} onChange={e => setStatus(e.target.value as GiftStatus)}>
@@ -339,6 +447,10 @@ function GiftForm({ gift, onSave, onCancel }: { gift?: Gift; onSave: (b: GiftBod
 
       <fieldset className={base.roles}>
         <legend className={base.legend}>Como presentear</legend>
+        <label className={base.radio}>
+          <input type="radio" name={`modo-${gift?.id ?? 'novo'}`} checked={mode === 'reserva'} onChange={() => setMode('reserva')} />
+          “Eu vou levar” (o convidado reserva e traz)
+        </label>
         <label className={base.radio}>
           <input type="radio" name={`modo-${gift?.id ?? 'novo'}`} checked={mode === 'site'} onChange={() => setMode('site')} />
           Pelo site (PIX ou cartão)

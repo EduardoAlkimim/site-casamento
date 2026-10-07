@@ -42,11 +42,23 @@ export type Gift = {
   imageUrl: string | null
   priceCents: number | null
   status: GiftStatus
-  purchaseMode: 'site' | 'link'
+  purchaseMode: 'site' | 'link' | 'reserva'
   externalUrl: string | null
+  roomId: number | null
+  /** Só vêm para os noivos (painel). */
+  reservedBy?: string | null
+  reservedContact?: string | null
+  reservedAt?: string | null
 }
+export type GiftRoom = { id: number; name: string }
+export type ChaEvent = { date: string; time: string; venue: string; address: string }
 export type GiftListName = 'casamento' | 'cha'
-export type GiftListData = { page: { title: string; heading: string | null; intro: string | null }; gifts: Gift[] }
+export type GiftListData = {
+  page: { title: string; heading: string | null; intro: string | null }
+  gifts: Gift[]
+  rooms: GiftRoom[]
+  event?: ChaEvent
+}
 
 /** Envia uma imagem (já reduzida) para o painel. */
 export async function uploadImage(file: Blob): Promise<{ image: string; url: string }> {

@@ -126,3 +126,42 @@
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: var(--fs-small);
+  cursor: pointer;
+}
+
+.filter button span {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.filter button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.filter button[aria-pressed='true'] span {
+  color: var(--on-accent);
+}
+
+.reserved {
+  font-size: var(--fs-small);
+  color: var(--color-wine-deep);
+}

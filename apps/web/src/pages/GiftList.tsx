@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
-import { api, type Gift, type GiftListData, type GiftListName, type PaymentConfig } from '../lib/api'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { api, type ChaEvent, type Gift, type GiftListData, type GiftListName, type PaymentConfig } from '../lib/api'
 import { formatBRL } from '../lib/money'
 import { BananaLeaf, Monstera, PalmFrond, Sprig } from '../design-system/botanicals/Botanicals'
 import { Divider, Eyebrow } from '../design-system/components/Ornaments'
 import styles from './GiftList.module.css'
 import { PaymentDialog } from './presentes/PaymentDialog'
+import { ReserveDialog } from './presentes/ReserveDialog'
 
 // Página pública das listas (casamento e chá de panela). Todo o texto vem do
 // painel; o bloqueio é decidido pela API (PageGate mostra a tela "Em breve").
@@ -13,6 +14,7 @@ export default function GiftList({ list }: { list: GiftListName }) {
   const [error, setError] = useState<string | null>(null)
   const [payments, setPayments] = useState<PaymentConfig | null>(null)
   const [paying, setPaying] = useState<Gift | null>(null)
+  const [reserving, setReserving] = useState<Gift | null>(null)
 
   const load = useCallback(() => {
     api<GiftListData>(`/listas/${list}`)
@@ -26,6 +28,20 @@ export default function GiftList({ list }: { list: GiftListName }) {
     api<PaymentConfig>('/pagamentos/config').then(setPayments, () => setPayments({ enabled: false, publicKey: null }))
   }, [load])
 
+  // Agrupa por cômodo, na ordem definida no painel; sem cômodo vai para "Outros".
+  const groups = useMemo(() => {
+    if (!data) return []
+    const byRoom = data.rooms
+      .map(room => ({ id: `comodo-${room.id}`, name: room.name, gifts: data.gifts.filter(g => g.roomId === room.id) }))
+      .filter(g => g.gifts.length > 0)
+    const loose = data.gifts.filter(g => g.roomId == null || !data.rooms.some(r => r.id === g.roomId))
+    if (byRoom.length === 0) return [{ id: 'todos', name: '', gifts: loose }]
+    return loose.length ? [...byRoom, { id: 'comodo-outros', name: 'Outros', gifts: loose }] : byRoom
+  }, [data])
+  const grouped = groups.length > 1 || Boolean(groups[0]?.name)
+
+  const give = (gift: Gift) => (gift.purchaseMode === 'reserva' ? setReserving(gift) : setPaying(gift))
+
   return (
     <div className={styles.page}>
       <header className={styles.head}>
@@ -33,6 +49,8 @@ export default function GiftList({ list }: { list: GiftListName }) {
         {data && <h1 className={styles.title}>{data.page.heading || data.page.title}</h1>}
         {data?.page.intro && <p className={styles.intro}>{data.page.intro}</p>}
       </header>
+
+      {data?.event && <EventDetails event={data.event} />}
 
       <Divider className={styles.divider} />
 
@@ -42,19 +60,37 @@ export default function GiftList({ list }: { list: GiftListName }) {
         <p className={styles.state}>A lista está sendo montada. Volte daqui a pouquinho.</p>
       )}
 
-      {data && data.gifts.length > 0 && (
-        <ul className={styles.grid}>
-          {data.gifts.map((gift, i) => (
-            <GiftItem
-              key={gift.id}
-              gift={gift}
-              index={i}
-              canPay={Boolean(payments?.enabled)}
-              onGive={() => setPaying(gift)}
-            />
+      {data && data.gifts.length > 0 && grouped && (
+        <nav className={styles.rooms} aria-label="Cômodos">
+          {groups.map(g => (
+            <a key={g.id} href={`#${g.id}`}>
+              {g.name}
+              <span>{g.gifts.filter(x => x.status === 'disponivel').length}</span>
+            </a>
           ))}
-        </ul>
+        </nav>
       )}
+
+      {groups.map(group => (
+        <section key={group.id} id={group.id} className={styles.room} aria-labelledby={grouped ? `${group.id}-t` : undefined}>
+          {grouped && (
+            <h2 id={`${group.id}-t`} className={styles.roomTitle}>
+              {group.name}
+            </h2>
+          )}
+          <ul className={styles.grid}>
+            {group.gifts.map((gift, i) => (
+              <GiftItem
+                key={gift.id}
+                gift={gift}
+                index={i}
+                canPay={Boolean(payments?.enabled)}
+                onGive={() => give(gift)}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
 
       {paying && payments?.publicKey && (
         <PaymentDialog
@@ -66,7 +102,47 @@ export default function GiftList({ list }: { list: GiftListName }) {
           }}
         />
       )}
+      {reserving && (
+        <ReserveDialog
+          gift={reserving}
+          onClose={reserved => {
+            setReserving(null)
+            if (reserved) load()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+/* Data, horário, local e endereço do chá — aparece quando algo foi preenchido. */
+function EventDetails({ event }: { event: ChaEvent }) {
+  const rows = [
+    ['Data', event.date],
+    ['Horário', event.time],
+    ['Local', event.venue],
+    ['Endereço', event.address],
+  ].filter(([, v]) => v)
+  if (!rows.length) return null
+  const map = event.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([event.venue, event.address].filter(Boolean).join(', '))}`
+    : null
+  return (
+    <section className={styles.event} aria-label="Sobre o chá">
+      <dl className={styles.eventFacts}>
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {map && (
+        <a className={styles.mapLink} href={map} target="_blank" rel="noopener noreferrer">
+          Abrir no mapa<span className="visually-hidden"> (abre em outra aba)</span>
+        </a>
+      )}
+    </section>
   )
 }
 
@@ -109,6 +185,12 @@ function GiftItem({ gift, index, canPay, onGive }: { gift: Gift; index: number; 
               <path d="M3 9 9 3M4 3h5v5" fill="none" stroke="currentColor" strokeWidth="1.2" />
             </svg>
           </a>
+        )}
+        {gift.purchaseMode === 'reserva' && gift.status === 'disponivel' && (
+          <button type="button" className={styles.cta} onClick={onGive}>
+            Eu vou levar
+            <span className="visually-hidden"> {gift.name}</span>
+          </button>
         )}
         {!given && gift.purchaseMode === 'site' && gift.priceCents != null && gift.status === 'disponivel' &&
           (canPay ? (
