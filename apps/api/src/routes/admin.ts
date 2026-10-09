@@ -10,6 +10,8 @@ import {
 import { config } from '../config.ts'
 import { db } from '../db.ts'
 import { verifyPassword } from '../password.ts'
+import { listManualSections } from './public.ts'
+import { removeUpload } from './uploads.ts'
 import { listPages } from './public.ts'
 
 const padrinhoBody = {
@@ -17,12 +19,12 @@ const padrinhoBody = {
   additionalProperties: false,
   properties: {
     name: { type: 'string', minLength: 1, maxLength: 80 },
-    role: { type: 'string', enum: ['padrinho', 'madrinha'] },
+    role: { type: 'string', enum: ['padrinho', 'madrinha', 'casal'] },
     personalMessage: { type: 'string', maxLength: 1500 },
   },
 }
 
-type PadrinhoInput = { name?: string; role?: 'padrinho' | 'madrinha'; personalMessage?: string }
+type PadrinhoInput = { name?: string; role?: 'padrinho' | 'madrinha' | 'casal'; personalMessage?: string }
 
 const listPadrinhos = () =>
   db
@@ -146,38 +148,66 @@ export async function adminRoutes(app: FastifyInstance) {
     })
 
     /* ── Manual dos padrinhos: texto editado pelos noivos ───────────── */
-    const listManual = () => db.prepare('SELECT id, title, body FROM manual_sections ORDER BY position').all()
+    const listManual = () => listManualSections()
     const sectionBody = {
       type: 'object',
       additionalProperties: false,
       properties: {
         title: { type: 'string', minLength: 1, maxLength: 120 },
         body: { type: 'string', maxLength: 4000 },
+        audience: { type: 'string', enum: ['todos', 'madrinha', 'padrinho'] },
+        kind: { type: 'string', enum: ['texto', 'paleta', 'agenda', 'dicas'] },
+        colors: { type: 'array', maxItems: 40, items: { type: 'string', pattern: '^#[0-9A-Fa-f]{6}$' } },
+        image: { type: ['string', 'null'], pattern: '^[a-f0-9]{32}\\.(webp|jpg|png)$|^/(manual|fotos)/[a-z0-9._-]+$' },
       },
+    }
+    type SectionInput = {
+      title?: string
+      body?: string
+      audience?: string
+      kind?: string
+      colors?: string[]
+      image?: string | null
     }
 
     protectedRoutes.get('/manual', async () => ({ sections: listManual() }))
 
-    protectedRoutes.post<{ Body: { title: string; body?: string } }>(
+    protectedRoutes.post<{ Body: SectionInput }>(
       '/manual',
       { schema: { body: { ...sectionBody, required: ['title'] } } },
       async (req, reply) => {
+        const b = req.body
         db.prepare(
-          'INSERT INTO manual_sections (position, title, body) VALUES ((SELECT COALESCE(MAX(position), 0) + 1 FROM manual_sections), ?, ?)',
-        ).run(req.body.title.trim(), (req.body.body ?? '').trim())
+          `INSERT INTO manual_sections (position, title, body, audience, kind, colors, image)
+           VALUES ((SELECT COALESCE(MAX(position), 0) + 1 FROM manual_sections), ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          b.title!.trim(),
+          (b.body ?? '').trim(),
+          b.audience ?? 'todos',
+          b.kind ?? 'texto',
+          b.colors ? JSON.stringify(b.colors) : null,
+          b.image ?? null,
+        )
         return reply.code(201).send({ sections: listManual() })
       },
     )
 
-    protectedRoutes.patch<{ Params: { id: string }; Body: { title?: string; body?: string } }>(
+    protectedRoutes.patch<{ Params: { id: string }; Body: SectionInput }>(
       '/manual/:id',
       { schema: { body: sectionBody } },
       async (req, reply) => {
-        const { title, body } = req.body
-        const result = db
-          .prepare('UPDATE manual_sections SET title = COALESCE(?, title), body = COALESCE(?, body) WHERE id = ?')
-          .run(title?.trim() ?? null, body?.trim() ?? null, Number(req.params.id))
-        if (result.changes === 0) return reply.code(404).send({ error: 'Seção não encontrada.' })
+        const id = Number(req.params.id)
+        const current = db.prepare('SELECT image FROM manual_sections WHERE id = ?').get(id) as { image: string | null } | undefined
+        if (!current) return reply.code(404).send({ error: 'Seção não encontrada.' })
+        const columns = { title: 'title', body: 'body', audience: 'audience', kind: 'kind', colors: 'colors', image: 'image' } as const
+        const entries = Object.entries(req.body).filter(([k]) => k in columns) as [keyof typeof columns, unknown][]
+        if (entries.length) {
+          db.prepare(`UPDATE manual_sections SET ${entries.map(([k]) => `${columns[k]} = ?`).join(', ')} WHERE id = ?`).run(
+            ...entries.map(([k, v]) => (k === 'colors' ? JSON.stringify(v) : typeof v === 'string' ? v.trim() : (v as null))),
+            id,
+          )
+        }
+        if ('image' in req.body && req.body.image !== current.image) await removeUpload(current.image)
         return { sections: listManual() }
       },
     )

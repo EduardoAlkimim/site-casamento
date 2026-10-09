@@ -29,8 +29,19 @@ export type Page = {
   heading: string | null
   intro: string | null
 }
-export type Padrinho = { id: number; name: string; role: 'padrinho' | 'madrinha'; personalMessage: string }
-export type ManualSection = { id: number; title: string; body: string }
+export type Padrinho = { id: number; name: string; role: 'padrinho' | 'madrinha' | 'casal'; personalMessage: string }
+export type ManualAudience = 'todos' | 'madrinha' | 'padrinho'
+export type ManualKind = 'texto' | 'paleta' | 'agenda' | 'dicas'
+export type ManualSection = {
+  id: number
+  title: string
+  body: string
+  audience: ManualAudience
+  kind: ManualKind
+  colors: string[]
+  image: string | null
+  imageUrl: string | null
+}
 export type AdminPadrinho = Padrinho & { createdAt: string; lastSeenAt: string | null }
 
 export type GiftStatus = 'disponivel' | 'reservado' | 'presenteado'

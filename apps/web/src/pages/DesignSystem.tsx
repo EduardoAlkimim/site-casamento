@@ -63,7 +63,7 @@ export default function DesignSystem() {
             <p className={styles.h1}>Nossa História</p>
             <p className={styles.h2}>Ao pôr do sol</p>
             <p className={styles.h3}>
-              <em>Cerimônia às 16h30</em>
+              <em>Cerimônia às 16h00</em>
             </p>
             <p className={styles.body}>
               Jost — textos, informações, botões e navegação. Geométrica e limpa, lembra a sinalização em madeira e

@@ -3,8 +3,8 @@
 
 export const wedding = {
   couple: { first: 'Eduardo', second: 'Thamires', monogram: 'E & T' },
-  // Cerimônia às 16h30, ao pôr do sol (projeto de decoração). Horário de Brasília.
-  date: '2027-04-21T16:30:00-03:00',
+  // Cerimônia às 16h00 (Manual dos Padrinhos). Horário de Brasília.
+  date: '2027-04-21T16:00:00-03:00',
   dateLong: 'Quarta-feira, 21 de abril de 2027',
   dateShort: '21 · 04 · 2027',
   // Frase de abertura — texto provisório, para os noivos reescreverem.
@@ -13,7 +13,7 @@ export const wedding = {
     name: 'Horto Brasília Convention',
     city: 'Brasília, DF',
   },
-  ceremonyTime: '16h30',
+  ceremonyTime: '16h00',
   heroPhoto: { src: '/fotos/foto2.jpg', alt: 'Eduardo beija a testa de Thamires na praia, ao fim da tarde', position: '52% 40%' },
 } as const
 

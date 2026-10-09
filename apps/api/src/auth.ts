@@ -29,7 +29,7 @@ function readSigned(req: FastifyRequest, name: string): string | null {
   return result.valid ? result.value : null
 }
 
-export type Padrinho = { id: number; name: string; role: 'padrinho' | 'madrinha'; personalMessage: string }
+export type Padrinho = { id: number; name: string; role: 'padrinho' | 'madrinha' | 'casal'; personalMessage: string }
 
 export function currentPadrinho(req: FastifyRequest): Padrinho | null {
   const id = Number(readSigned(req, PADRINHO_COOKIE))

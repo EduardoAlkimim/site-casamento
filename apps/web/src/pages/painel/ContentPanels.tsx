@@ -74,7 +74,7 @@ export function InformacoesPanel() {
             ],
           },
           { key: 'title', label: 'Título ou pergunta', kind: 'text', required: true },
-          { key: 'subtitle', label: 'Destaque (opcional)', kind: 'text', placeholder: 'Ex.: 21 de abril · 16h30' },
+          { key: 'subtitle', label: 'Destaque (opcional)', kind: 'text', placeholder: 'Ex.: 21 de abril · 16h00' },
           { key: 'body', label: 'Texto ou resposta', kind: 'textarea' },
           { key: 'address', label: 'Endereço (opcional)', kind: 'text' },
           { key: 'mapUrl', label: 'Link do mapa (opcional)', kind: 'url', hint: 'Se vazio, o site busca o endereço no Google Maps.' },

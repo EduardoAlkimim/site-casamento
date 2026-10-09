@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { currentPadrinho, hashToken, isAdmin, startPadrinhoSession, type Padrinho } from '../auth.ts'
 import { db } from '../db.ts'
+import { imageUrl } from './uploads.ts'
 
 export type Page = {
   slug: string
@@ -63,7 +64,30 @@ export async function publicRoutes(app: FastifyInstance) {
   app.get('/padrinhos/manual', async (req, reply) => {
     const padrinho = currentPadrinho(req)
     if (!padrinho && !isAdmin(req)) return reply.code(403).send({ error: 'Página exclusiva dos padrinhos.' })
-    const sections = db.prepare('SELECT id, title, body FROM manual_sections ORDER BY position').all()
+    // Madrinha vê o que é de todos + madrinhas; padrinho, todos + padrinhos;
+    // casal e os noivos (prévia) veem tudo.
+    const role = padrinho?.role
+    const sections = listManualSections().filter(
+      sec => sec.audience === 'todos' || !role || role === 'casal' || sec.audience === role,
+    )
     return { padrinho, sections }
   })
+}
+
+export type ManualSection = {
+  id: number
+  title: string
+  body: string
+  audience: 'todos' | 'madrinha' | 'padrinho'
+  kind: 'texto' | 'paleta' | 'agenda' | 'dicas'
+  colors: string[]
+  image: string | null
+  imageUrl: string | null
+}
+
+export function listManualSections(): ManualSection[] {
+  const rows = db
+    .prepare('SELECT id, title, body, audience, kind, colors, image FROM manual_sections ORDER BY position')
+    .all() as (Omit<ManualSection, 'colors' | 'imageUrl'> & { colors: string | null })[]
+  return rows.map(r => ({ ...r, colors: r.colors ? (JSON.parse(r.colors) as string[]) : [], imageUrl: imageUrl(r.image) }))
 }

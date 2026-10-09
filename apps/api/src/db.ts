@@ -206,6 +206,55 @@ const migrations: string[] = [
   INSERT OR IGNORE INTO settings (key, value) VALUES
     ('cha.date', ''), ('cha.time', ''), ('cha.venue', ''), ('cha.address', '');
   `,
+  `-- fk-off
+  -- Manual dos Padrinhos (PDF dos noivos): padrinho pode ser um casal, e cada
+  -- seção tem público (todos/madrinha/padrinho), tipo, cores e imagem.
+  CREATE TABLE padrinhos_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'padrinho' CHECK (role IN ('padrinho', 'madrinha', 'casal')),
+    personal_message TEXT NOT NULL DEFAULT '',
+    token_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_seen_at TEXT
+  );
+  INSERT INTO padrinhos_new SELECT id, name, role, personal_message, token_hash, created_at, last_seen_at FROM padrinhos;
+  DROP TABLE padrinhos;
+  ALTER TABLE padrinhos_new RENAME TO padrinhos;
+
+  ALTER TABLE manual_sections ADD COLUMN audience TEXT NOT NULL DEFAULT 'todos';
+  ALTER TABLE manual_sections ADD COLUMN kind TEXT NOT NULL DEFAULT 'texto';
+  ALTER TABLE manual_sections ADD COLUMN colors TEXT;
+  ALTER TABLE manual_sections ADD COLUMN image TEXT;
+
+  -- Os textos provisórios dão lugar ao conteúdo do PDF (só se ninguém escreveu nada).
+  DELETE FROM manual_sections WHERE body LIKE 'Texto provisório%';
+  INSERT INTO manual_sections (position, title, body, audience, kind, colors, image)
+  SELECT * FROM (
+    SELECT 1, 'Para vocês',
+      'Ter vocês ao nosso lado torna tudo ainda mais especial. Mais do que padrinhos do nosso casamento, vocês são pessoas que fazem parte da nossa história e que queremos continuar levando conosco em todos os capítulos que ainda virão.' || char(10) ||
+      'Com imensa alegria, convidamos-lhe para serem nossos padrinhos de casamento. A presença e bênção de vocês serão muito importantes para nós, e ficamos honrados em contar com vocês neste momento especial.',
+      'todos', 'texto', NULL, NULL
+    UNION ALL SELECT 2, 'Madrinhas',
+      'Querida madrinha, o mais importante é que você se sinta ainda mais linda. A nossa sugestão é que você escolha um vestido liso e em cor vibrante que valorize a sua beleza para colorir o nosso dia.',
+      'madrinha', 'paleta', '["#EC5F8E","#D62481","#D81415","#E84A1E","#F28829","#F0755C","#FADF20","#C1D442","#0DA9A7","#0FABD7","#095E9A","#313278","#5A3D8D","#98498D","#901F65"]', '/manual/vestidos.webp'
+    UNION ALL SELECT 3, 'Padrinhos',
+      'Ao nosso lado, queremos que você também se sinta especial! Pensando nisso, escolhemos essa paleta com muito carinho, para que tudo fique em harmonia nesse dia tão único.' || char(10) ||
+      'Para o traje: você deve usar terno grafite, camisa branca e gravata cinza claro — clássico, elegante e inesquecível.',
+      'padrinho', 'texto', NULL, '/manual/ternos.webp'
+    UNION ALL SELECT 4, 'Para o grande dia',
+      '15h00 | Chegada dos padrinhos' || char(10) || '16h00 | Início da cerimônia',
+      'todos', 'agenda', NULL, NULL
+    UNION ALL SELECT 5, 'Últimas dicas',
+      'Chegue no horário.' || char(10) || 'Divirtam-se muito!' || char(10) || 'Dancem.' || char(10) || 'Se joguem nas fotos e sintam todo nosso amor por vocês!',
+      'todos', 'dicas', NULL, NULL
+  ) WHERE NOT EXISTS (SELECT 1 FROM manual_sections);
+
+  -- Horário oficial (PDF dos noivos): cerimônia às 16h00.
+  UPDATE settings SET value = '16h00' WHERE key = 'home.ceremonyTime' AND value = '16h30';
+  UPDATE info_blocks SET subtitle = replace(subtitle, '16h30', '16h00') WHERE subtitle LIKE '%16h30%';
+  UPDATE info_blocks SET body = replace(body, '16h30', '16h00') WHERE body LIKE '%16h30%';
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }
