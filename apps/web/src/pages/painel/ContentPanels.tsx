@@ -291,3 +291,51 @@ export function InicioPanel() {
     </section>
   )
 }
+
+/* ── Avisos por e-mail (Resend) ──────────────────────────────────────── */
+export function AvisosPanel() {
+  const [state, setState] = useState<{ enabled: boolean; to: string[] } | null>(null)
+  const [msg, setMsg] = useState<string>()
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    api<{ enabled: boolean; to: string[] }>('/admin/avisos').then(setState, () => setState({ enabled: false, to: [] }))
+  }, [])
+
+  const test = async () => {
+    setBusy(true)
+    setMsg(undefined)
+    try {
+      await api('/admin/avisos/teste', { body: {} })
+      setMsg('E-mail de teste enviado. Confira a caixa de entrada (e o spam, na primeira vez).')
+    } catch (err) {
+      setMsg((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className={base.block} aria-labelledby="painel-avisos">
+      <Eyebrow>Avisos</Eyebrow>
+      <h2 id="painel-avisos" className={base.blockTitle}>Avisos por e-mail</h2>
+      <p className={base.help}>
+        Vocês recebem um e-mail quando um presente é pago, quando alguém deixa um recado, quando alguém reserva um item e quando
+        um padrinho abre o manual pela primeira vez.
+      </p>
+      {state && (
+        <p className={state.enabled ? base.saved : base.help}>
+          {state.enabled ? `Ligado · enviando para ${state.to.join(' e ')}` : 'Ainda não configurado.'}
+        </p>
+      )}
+      {state?.enabled && (
+        <div>
+          <Button variant="outline" loading={busy} onClick={test}>
+            Enviar e-mail de teste
+          </Button>
+        </div>
+      )}
+      {msg && <p className={base.help} role="status">{msg}</p>}
+    </section>
+  )
+}

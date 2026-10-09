@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { currentPadrinho, hashToken, isAdmin, startPadrinhoSession, type Padrinho } from '../auth.ts'
 import { db } from '../db.ts'
 import { imageUrl } from './uploads.ts'
+import { notify } from '../notify.ts'
 
 export type Page = {
   slug: string
@@ -55,7 +56,10 @@ export async function publicRoutes(app: FastifyInstance) {
         .prepare('SELECT id, name, role, personal_message AS personalMessage FROM padrinhos WHERE token_hash = ?')
         .get(hashToken(req.body.token)) as Padrinho | undefined
       if (!row) return reply.code(404).send({ error: 'Este convite não foi encontrado. Ele pode ter sido trocado.' })
+      const first = !(db.prepare('SELECT last_seen_at FROM padrinhos WHERE id = ?').get(row.id) as { last_seen_at: string | null })
+        .last_seen_at
       db.prepare("UPDATE padrinhos SET last_seen_at = datetime('now') WHERE id = ?").run(row.id)
+      if (first) notify(`🏷️ ${row.name} abriu o manual`, `${row.name} encostou a tag`, [['Quem', row.name], ['Quando', 'Agora, pela primeira vez']])
       startPadrinhoSession(reply, row.id)
       return { padrinho: row }
     },

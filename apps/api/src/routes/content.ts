@@ -3,6 +3,7 @@ import { requireAdmin } from '../auth.ts'
 import { db } from '../db.ts'
 import { assertUnlocked } from './public.ts'
 import { imageUrl, removeUpload } from './uploads.ts'
+import { notify } from '../notify.ts'
 
 const pageText = (slug: string) =>
   db.prepare('SELECT title, heading, intro FROM pages WHERE slug = ?').get(slug) as {
@@ -304,6 +305,7 @@ export async function contentRoutes(app: FastifyInstance) {
       if (!assertUnlocked('recados', req, reply)) return reply
       if (req.body.website) return reply.code(201).send({ ok: true })
       db.prepare('INSERT INTO messages (author_name, body) VALUES (?, ?)').run(req.body.name.trim(), req.body.message.trim())
+      notify(`💌 Novo recado de ${req.body.name.trim()}`, `${req.body.name.trim()} deixou um recado`, [], req.body.message.trim())
       return reply.code(201).send({ ok: true })
     },
   )

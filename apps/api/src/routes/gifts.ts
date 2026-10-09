@@ -3,6 +3,7 @@ import { requireAdmin } from '../auth.ts'
 import { db } from '../db.ts'
 import { assertUnlocked } from './public.ts'
 import { imageUrl, removeUpload } from './uploads.ts'
+import { notify } from '../notify.ts'
 
 // Duas listas com a mesma estrutura; cada uma pertence a uma página bloqueável.
 const LISTS = { casamento: 'presentes', cha: 'cha-de-panela' } as const
@@ -145,6 +146,15 @@ export async function giftRoutes(app: FastifyInstance) {
         )
         .run(req.body.name.trim(), (req.body.contact ?? '').trim() || null, gift.id)
       if (r.changes === 0) return reply.code(409).send({ error: 'Alguém acabou de reservar este item. Escolha outro?' })
+      const info = db
+        .prepare('SELECT g.name, r.name AS room FROM gifts g LEFT JOIN gift_rooms r ON r.id = g.room_id WHERE g.id = ?')
+        .get(gift.id) as { name: string; room: string | null }
+      notify(`🧺 ${req.body.name.trim()} vai levar: ${info.name}`, `${req.body.name.trim()} reservou um item`, [
+        ['Item', info.name],
+        ['Cômodo', info.room],
+        ['Lista', gift.list === 'cha' ? 'Chá de Panela' : 'Casamento'],
+        ['Contato', (req.body.contact ?? '').trim() || null],
+      ])
       return { ok: true, url: gift.url }
     },
   )

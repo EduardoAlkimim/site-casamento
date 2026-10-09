@@ -19,4 +19,8 @@ export const config = {
   mpPublicKey: process.env.MP_PUBLIC_KEY ?? '',
   // Assinatura secreta do webhook (opcional: o status é sempre conferido na API do MP).
   mpWebhookSecret: process.env.MP_WEBHOOK_SECRET ?? '',
+  // Avisos por e-mail (Resend). Sem a chave, nada é enviado.
+  resendApiKey: process.env.RESEND_API_KEY ?? '',
+  notifyTo: (process.env.NOTIFY_EMAILS ?? '').split(',').map(s => s.trim()).filter(Boolean),
+  notifyFrom: process.env.NOTIFY_FROM ?? 'Site do casamento <avisos@eduardothamires.com.br>',
 }

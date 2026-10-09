@@ -4,6 +4,7 @@ import { isAdmin, requireAdmin } from '../auth.ts'
 import { config } from '../config.ts'
 import { db } from '../db.ts'
 import { createCardPayment, createPixPayment, getPayment, MpError, type CardData, type MpPayment } from '../payments/mercadopago.ts'
+import { brl, notify } from '../notify.ts'
 
 const LIST_PAGE = { casamento: 'presentes', cha: 'cha-de-panela' } as const
 const enabled = () => Boolean(config.mpAccessToken && config.mpPublicKey)
@@ -30,11 +31,28 @@ const SELECT = `SELECT id, public_id AS publicId, gift_id AS giftId, gift_name A
 
 /** Grava o status vindo do Mercado Pago e mantém o presente coerente. */
 function applyStatus(row: Pick<PaymentRow, 'id' | 'giftId'>, mp: MpPayment) {
+  const wasApproved = Boolean(
+    (db.prepare('SELECT approved_at FROM payments WHERE id = ?').get(row.id) as { approved_at: string | null } | undefined)?.approved_at,
+  )
   db.prepare(
     `UPDATE payments SET status = ?, status_detail = ?, provider_id = COALESCE(provider_id, ?), updated_at = datetime('now'),
        approved_at = CASE WHEN ? = 'approved' AND approved_at IS NULL THEN datetime('now') ELSE approved_at END
      WHERE id = ?`,
   ).run(mp.status, mp.status_detail, String(mp.id), mp.status, row.id)
+
+  // Aviso por e-mail só na primeira vez que o pagamento é aprovado.
+  if (mp.status === 'approved' && !wasApproved) {
+    const p = db
+      .prepare('SELECT gift_name AS gift, amount_cents AS cents, method, payer_name AS name, payer_email AS email FROM payments WHERE id = ?')
+      .get(row.id) as { gift: string; cents: number; method: string; name: string; email: string }
+    notify(`🎁 Presente recebido: ${p.gift}`, 'Vocês ganharam um presente!', [
+      ['Presente', p.gift],
+      ['Valor', brl(p.cents)],
+      ['De', p.name],
+      ['E-mail', p.email],
+      ['Forma', p.method === 'pix' ? 'PIX' : 'Cartão'],
+    ])
+  }
 
   if (!row.giftId) return
   if (mp.status === 'approved') {
@@ -218,6 +236,11 @@ export async function paymentRoutes(app: FastifyInstance) {
         .prepare("UPDATE payments SET message = ?, updated_at = datetime('now') WHERE public_id = ? AND message IS NULL")
         .run(req.body.message.trim(), req.params.id)
       if (result.changes === 0) return reply.code(409).send({ error: 'Este recado já foi enviado.' })
+      const p = db.prepare('SELECT gift_name AS gift, payer_name AS name FROM payments WHERE public_id = ?').get(req.params.id) as {
+        gift: string
+        name: string
+      }
+      notify(`💌 Recado de ${p.name}`, `${p.name} deixou um recado`, [['Junto com', p.gift]], req.body.message.trim())
       return { ok: true }
     },
   )

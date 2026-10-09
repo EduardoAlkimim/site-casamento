@@ -12,6 +12,7 @@ import { db } from '../db.ts'
 import { verifyPassword } from '../password.ts'
 import { listManualSections } from './public.ts'
 import { removeUpload } from './uploads.ts'
+import { notify, notifyEnabled } from '../notify.ts'
 import { listPages } from './public.ts'
 
 const padrinhoBody = {
@@ -100,6 +101,17 @@ export async function adminRoutes(app: FastifyInstance) {
     )
 
     protectedRoutes.get('/padrinhos', async () => ({ padrinhos: listPadrinhos() }))
+
+    // Avisos por e-mail: mostra se está ligado e para quem; envia um teste.
+    protectedRoutes.get('/avisos', async () => ({
+      enabled: notifyEnabled(),
+      to: config.notifyTo.map(e => e.replace(/^(.{2}).*(@.*)$/, '$1•••$2')),
+    }))
+    protectedRoutes.post('/avisos/teste', async (_req, reply) => {
+      if (!notifyEnabled()) return reply.code(409).send({ error: 'Os avisos por e-mail ainda não foram configurados.' })
+      notify('✅ Teste dos avisos do site', 'Os avisos estão funcionando', [['O que é', 'Um e-mail de teste enviado pelo painel']])
+      return { ok: true }
+    })
 
     protectedRoutes.post<{ Body: PadrinhoInput }>(
       '/padrinhos',

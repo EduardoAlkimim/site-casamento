@@ -11,7 +11,7 @@ import styles from './Painel.module.css'
 import { SectionEditor } from './painel/ManualEditor'
 import { ListasPanel } from './painel/ListasPanel'
 import { RecebidosPanel } from './painel/RecebidosPanel'
-import { HistoriaPanel, InformacoesPanel, InicioPanel, PendenciasPanel, RecadosPanel } from './painel/ContentPanels'
+import { AvisosPanel, HistoriaPanel, InformacoesPanel, InicioPanel, PendenciasPanel, RecadosPanel } from './painel/ContentPanels'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -83,6 +83,7 @@ const SECTIONS: Section[] = [
   { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VIII', render: () => <RecadosPanel /> },
   { slug: 'padrinhos', label: 'Padrinhos e tags NFC', group: 'Convidados', num: 'IX', render: () => <PadrinhosPanel /> },
   { slug: 'manual', label: 'Manual do Padrinho', group: 'Convidados', num: 'X', render: () => <ManualPanel /> },
+  { slug: 'avisos', label: 'Avisos por e-mail', group: 'O site', render: () => <AvisosPanel /> },
 ]
 
 function Dashboard() {
@@ -180,6 +181,8 @@ function Overview() {
         return { text: plural(sum.padrinhos, 'cadastrado', 'cadastrados') }
       case 'manual':
         return { text: 'Texto para os padrinhos' }
+      case 'avisos':
+        return { text: 'Presentes, recados e reservas no seu e-mail' }
       default:
         return { text: '' }
     }
