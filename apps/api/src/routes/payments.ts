@@ -138,11 +138,11 @@ export async function paymentRoutes(app: FastifyInstance) {
 
       // Preço e disponibilidade vêm sempre do banco, nunca do navegador.
       const gift = db
-        .prepare('SELECT id, list, name, price_cents AS priceCents, status, purchase_mode AS mode FROM gifts WHERE id = ?')
+        .prepare('SELECT id, list, name, price_cents AS priceCents, status, purchase_mode AS mode, hidden FROM gifts WHERE id = ?')
         .get(body.giftId) as
-        | { id: number; list: keyof typeof LIST_PAGE; name: string; priceCents: number | null; status: string; mode: string }
+        | { id: number; list: keyof typeof LIST_PAGE; name: string; priceCents: number | null; status: string; mode: string; hidden: number }
         | undefined
-      if (!gift) return reply.code(404).send({ error: 'Presente não encontrado.' })
+      if (!gift || gift.hidden) return reply.code(404).send({ error: 'Presente não encontrado.' })
       const page = db.prepare('SELECT locked FROM pages WHERE slug = ?').get(LIST_PAGE[gift.list]) as { locked: number }
       if (page.locked && !isAdmin(req)) return reply.code(423).send({ error: 'Esta lista ainda não foi liberada.' })
       if (gift.mode !== 'site' || !gift.priceCents) return reply.code(409).send({ error: 'Este presente não é pago pelo site.' })

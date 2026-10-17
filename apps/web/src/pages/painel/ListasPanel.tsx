@@ -192,7 +192,10 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                 <div className={styles.summary}>
                   <span className={styles.thumb}>{gift.imageUrl && <img src={gift.imageUrl} alt="" />}</span>
                   <span className={base.rowMain}>
-                    <span className={styles.giftName}>{gift.name}</span>
+                    <span className={styles.giftName}>
+                      {gift.name}
+                      {gift.hidden && <span className={styles.hiddenTag}>Escondido</span>}
+                    </span>
                     <span className={base.rowMeta}>
                       {[
                         roomName(gift.roomId),
@@ -223,6 +226,13 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                       Liberar reserva
                     </Button>
                   )}
+                  <Button
+                    variant="quiet"
+                    aria-label={`${gift.hidden ? 'Mostrar' : 'Esconder'} ${gift.name} para os convidados`}
+                    onClick={() => apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body: { hidden: !gift.hidden } })}
+                  >
+                    {gift.hidden ? 'Mostrar' : 'Esconder'}
+                  </Button>
                   {gift.purchaseMode !== 'site' && (
                     <Button variant="quiet" onClick={() => setLinking(linking === gift.id ? null : gift.id)}>
                       {gift.externalUrl ? 'Trocar link' : 'Colocar link'}

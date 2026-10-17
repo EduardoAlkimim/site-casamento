@@ -255,6 +255,10 @@ const migrations: string[] = [
   UPDATE info_blocks SET subtitle = replace(subtitle, '16h30', '16h00') WHERE subtitle LIKE '%16h30%';
   UPDATE info_blocks SET body = replace(body, '16h30', '16h00') WHERE body LIKE '%16h30%';
   `,
+  `
+  -- Item escondido: continua no painel (dá para editar e pôr link), mas os convidados não veem.
+  ALTER TABLE gifts ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }

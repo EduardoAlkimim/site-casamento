@@ -24,6 +24,7 @@ type GiftRow = {
   reservedBy: string | null
   reservedContact: string | null
   reservedAt: string | null
+  hidden: number
 }
 
 /** Quem reservou só aparece para os noivos. */
@@ -33,17 +34,17 @@ const listGifts = (list: List, forAdmin = false) =>
       .prepare(
         `SELECT id, name, description, image, price_cents AS priceCents, status,
                 purchase_mode AS purchaseMode, external_url AS externalUrl, room_id AS roomId,
-                reserved_by AS reservedBy, reserved_contact AS reservedContact, reserved_at AS reservedAt
-         FROM gifts WHERE list = ? ORDER BY position`,
+                reserved_by AS reservedBy, reserved_contact AS reservedContact, reserved_at AS reservedAt, hidden
+         FROM gifts WHERE list = ? ${forAdmin ? '' : 'AND hidden = 0'} ORDER BY position`,
       )
       .all(list) as GiftRow[]
-  ).map(({ reservedBy, reservedContact, reservedAt, ...g }) => ({
+  ).map(({ reservedBy, reservedContact, reservedAt, hidden, ...g }) => ({
     ...g,
     imageUrl: imageUrl(g.image),
     // Item de reserva: o link da loja só é entregue depois que a pessoa reserva
     // (senão dava para comprar sem reservar e o casal ganhava repetido).
     ...(g.purchaseMode === 'reserva' && !forAdmin ? { externalUrl: null, hasLink: Boolean(g.externalUrl) } : {}),
-    ...(forAdmin ? { reservedBy, reservedContact, reservedAt } : {}),
+    ...(forAdmin ? { reservedBy, reservedContact, reservedAt, hidden: hidden === 1 } : {}),
   }))
 
 const listRooms = (list: List) =>
@@ -84,10 +85,11 @@ const giftBody = {
     purchaseMode: { type: 'string', enum: ['site', 'link', 'reserva'] },
     externalUrl: { type: ['string', 'null'], maxLength: 500, pattern: '^https?://' },
     roomId: { type: ['integer', 'null'], minimum: 1 },
+    hidden: { type: 'boolean' },
   },
 }
 
-type GiftInput = Partial<Omit<GiftRow, 'id' | 'reservedBy' | 'reservedContact' | 'reservedAt'>>
+type GiftInput = Partial<Omit<GiftRow, 'id' | 'reservedBy' | 'reservedContact' | 'reservedAt' | 'hidden'> & { hidden: boolean }>
 
 const COLUMNS: Record<keyof GiftInput, string> = {
   name: 'name',
@@ -98,6 +100,7 @@ const COLUMNS: Record<keyof GiftInput, string> = {
   purchaseMode: 'purchase_mode',
   externalUrl: 'external_url',
   roomId: 'room_id',
+  hidden: 'hidden',
 }
 
 const defaultMode = (list: List): Mode => (list === 'cha' ? 'reserva' : 'site')
@@ -133,9 +136,9 @@ export async function giftRoutes(app: FastifyInstance) {
     },
     async (req, reply) => {
       const gift = db
-        .prepare('SELECT id, list, purchase_mode AS mode, external_url AS url FROM gifts WHERE id = ?')
-        .get(Number(req.params.id)) as { id: number; list: List; mode: Mode; url: string | null } | undefined
-      if (!gift) return reply.code(404).send({ error: 'Item não encontrado.' })
+        .prepare('SELECT id, list, purchase_mode AS mode, external_url AS url, hidden FROM gifts WHERE id = ?')
+        .get(Number(req.params.id)) as { id: number; list: List; mode: Mode; url: string | null; hidden: number } | undefined
+      if (!gift || gift.hidden) return reply.code(404).send({ error: 'Item não encontrado.' })
       if (!assertUnlocked(LISTS[gift.list], req, reply)) return reply
       if (gift.mode !== 'reserva') return reply.code(409).send({ error: 'Este item não é reservado pelo site.' })
       // Só reserva se ainda estiver livre (evita duas pessoas levando o mesmo).
@@ -212,7 +215,7 @@ export async function giftRoutes(app: FastifyInstance) {
         const entries = Object.entries(req.body).filter(([k]) => k in COLUMNS) as [keyof GiftInput, unknown][]
         if (entries.length) {
           const sets = entries.map(([k]) => `${COLUMNS[k]} = ?`).join(', ')
-          const values = entries.map(([, v]) => (typeof v === 'string' ? v.trim() : v)) as (string | number | null)[]
+          const values = entries.map(([, v]) => (typeof v === 'string' ? v.trim() : typeof v === 'boolean' ? Number(v) : v)) as (string | number | null)[]
           db.prepare(`UPDATE gifts SET ${sets} WHERE id = ?`).run(...values, id)
         }
         // Voltou a ficar disponível: esquece quem tinha reservado.
