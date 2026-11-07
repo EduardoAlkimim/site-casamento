@@ -227,32 +227,40 @@ export async function giftRoutes(app: FastifyInstance) {
       },
     )
 
-    admin.post<{ Params: { id: string }; Body: { direction: 'up' | 'down' } }>(
-      '/admin/presentes/:id/mover',
+    // Arrastar para reordenar: recebe a nova ordem só dos itens que estavam na
+    // tela (a lista pode estar filtrada por cômodo). Eles trocam de lugar entre
+    // si, nas vagas que já ocupavam; o resto da lista não se mexe.
+    admin.post<{ Params: { list: string }; Body: { ids: number[] } }>(
+      '/admin/listas/:list/ordem',
       {
         schema: {
-          body: { type: 'object', required: ['direction'], properties: { direction: { type: 'string', enum: ['up', 'down'] } } },
+          body: {
+            type: 'object',
+            required: ['ids'],
+            properties: { ids: { type: 'array', minItems: 1, maxItems: 2000, uniqueItems: true, items: { type: 'integer' } } },
+          },
         },
       },
       async (req, reply) => {
-        const current = db.prepare('SELECT id, list, position FROM gifts WHERE id = ?').get(Number(req.params.id)) as
-          | { id: number; list: List; position: number }
-          | undefined
-        if (!current) return reply.code(404).send({ error: 'Presente não encontrado.' })
-        const neighbor = db
-          .prepare(
-            req.body.direction === 'up'
-              ? 'SELECT id, position FROM gifts WHERE list = ? AND position < ? ORDER BY position DESC LIMIT 1'
-              : 'SELECT id, position FROM gifts WHERE list = ? AND position > ? ORDER BY position ASC LIMIT 1',
-          )
-          .get(current.list, current.position) as { id: number; position: number } | undefined
-        if (neighbor) {
-          db.exec('BEGIN')
-          db.prepare('UPDATE gifts SET position = ? WHERE id = ?').run(neighbor.position, current.id)
-          db.prepare('UPDATE gifts SET position = ? WHERE id = ?').run(current.position, neighbor.id)
-          db.exec('COMMIT')
+        const { list } = req.params
+        if (!isList(list)) return reply.code(404).send({ error: 'Lista não encontrada.' })
+        const all = (db.prepare('SELECT id FROM gifts WHERE list = ? ORDER BY position, id').all(list) as { id: number }[]).map(r => r.id)
+        const moving = new Set(req.body.ids)
+        if (req.body.ids.some(id => !all.includes(id))) {
+          return reply.code(409).send({ error: 'A lista mudou enquanto você arrastava. Recarregue a página e tente de novo.' })
         }
-        return listData(current.list, true)
+        const queue = [...req.body.ids]
+        const next = all.map(id => (moving.has(id) ? queue.shift()! : id))
+        const set = db.prepare('UPDATE gifts SET position = ? WHERE id = ?')
+        db.exec('BEGIN')
+        try {
+          next.forEach((id, i) => set.run(i + 1, id))
+          db.exec('COMMIT')
+        } catch (err) {
+          db.exec('ROLLBACK')
+          throw err
+        }
+        return listData(list, true)
       },
     )
 

@@ -10,6 +10,7 @@ import { Eyebrow } from '../../design-system/components/Ornaments'
 import base from '../Painel.module.css'
 import styles from './ListasPanel.module.css'
 import { EventEditor, ImportBox, RoomsEditor, roomCounts } from './ChaTools'
+import { SortableItem, SortableList } from './SortableList'
 
 const LISTS: { id: GiftListName; label: string; slug: string; path: string }[] = [
   { id: 'casamento', label: 'Casamento', slug: 'presentes', path: '/presentes' },
@@ -65,6 +66,18 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
       setError((err as Error).message)
       return null
     }
+  }
+
+  // Arrastou: reordena na hora (os itens fora do filtro ficam onde estão) e salva.
+  const reorder = (ids: number[]) => {
+    const moving = new Set(ids)
+    const queue = [...ids]
+    setData(prev => {
+      if (!prev) return prev
+      const byId = new Map(prev.gifts.map(g => [g.id, g]))
+      return { ...prev, gifts: prev.gifts.map(g => (moving.has(g.id) ? byId.get(queue.shift()!)! : g)) }
+    })
+    void apply(`/admin/listas/${active}/ordem`, { body: { ids } })
   }
 
   const roomName = (id: number | null) => data?.rooms.find(r => r.id === id)?.name
@@ -186,10 +199,14 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
           )}
 
           {shown.length === 0 && <p className={base.help}>Nenhum item com esse filtro.</p>}
-          <ul className={base.rows}>
-            {shown.map((gift, i) => (
-              <li key={gift.id} className={styles.giftRow}>
+          {shown.length > 1 && <p className={base.help}>Para mudar a ordem, segure a alça ⠿ e arraste.</p>}
+          <SortableList ids={shown.map(g => g.id)} onReorder={reorder} className={base.rows}>
+            {shown.map(gift => (
+              <SortableItem key={gift.id} id={gift.id} label={gift.name} className={styles.giftRow}>
+                {handle => (
+                <>
                 <div className={styles.summary}>
+                  {handle}
                   <span className={styles.thumb}>{gift.imageUrl && <img src={gift.imageUrl} alt="" />}</span>
                   <span className={base.rowMain}>
                     <span className={styles.giftName}>
@@ -243,22 +260,6 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                   </Button>
                   <Button
                     variant="quiet"
-                    disabled={i === 0}
-                    aria-label={`Subir ${gift.name}`}
-                    onClick={() => apply(`/admin/presentes/${gift.id}/mover`, { body: { direction: 'up' } })}
-                  >
-                    Subir
-                  </Button>
-                  <Button
-                    variant="quiet"
-                    disabled={i === shown.length - 1}
-                    aria-label={`Descer ${gift.name}`}
-                    onClick={() => apply(`/admin/presentes/${gift.id}/mover`, { body: { direction: 'down' } })}
-                  >
-                    Descer
-                  </Button>
-                  <Button
-                    variant="quiet"
                     className={base.danger}
                     onClick={() =>
                       confirm(`Apagar “${gift.name}” da lista?`) &&
@@ -293,9 +294,11 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                     }}
                   />
                 )}
-              </li>
+                </>
+                )}
+              </SortableItem>
             ))}
-          </ul>
+          </SortableList>
         </>
       )}
     </section>
