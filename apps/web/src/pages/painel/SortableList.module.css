@@ -1,10 +1,12 @@
 .handle {
-  flex: none;
+  position: absolute;
+  z-index: 1;
+  top: var(--handle-top, 0);
+  left: 0;
   display: grid;
   place-items: center;
   width: 2rem;
   height: 2.75rem;
-  margin-left: calc(var(--space-2) * -1);
   padding: 0;
   border: 0;
   background: none;

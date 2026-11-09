@@ -135,9 +135,14 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
               {data.gifts.length} {data.gifts.length === 1 ? 'presente' : 'presentes'}
             </p>
             {editing !== 'new' && (
-              <Button variant="outline" onClick={() => setEditing('new')}>
-                Adicionar presente
-              </Button>
+              <span className={base.formActions}>
+                <Button variant="outline" onClick={() => setEditing('new')}>
+                  Adicionar presente
+                </Button>
+                <Link to="/painel/importar" className={base.inlineLink}>
+                  Adicionar pela loja
+                </Link>
+              </span>
             )}
           </div>
 
@@ -203,11 +208,8 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
           <SortableList ids={shown.map(g => g.id)} onReorder={reorder} className={base.rows}>
             {shown.map(gift => (
               <SortableItem key={gift.id} id={gift.id} label={gift.name} className={styles.giftRow}>
-                {handle => (
-                <>
                 <div className={styles.summary}>
-                  {handle}
-                  <span className={styles.thumb}>{gift.imageUrl && <img src={gift.imageUrl} alt="" />}</span>
+                  <span className={styles.thumb}>{gift.imageUrl && <img src={gift.imageUrl} alt="" loading="lazy" decoding="async" />}</span>
                   <span className={base.rowMain}>
                     <span className={styles.giftName}>
                       {gift.name}
@@ -293,8 +295,6 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                       return ok
                     }}
                   />
-                )}
-                </>
                 )}
               </SortableItem>
             ))}

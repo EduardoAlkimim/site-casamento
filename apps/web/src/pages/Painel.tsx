@@ -13,6 +13,7 @@ import { ListasPanel } from './painel/ListasPanel'
 import { RecebidosPanel } from './painel/RecebidosPanel'
 import { AvisosPanel, HistoriaPanel, InformacoesPanel, InicioPanel, PendenciasPanel, RecadosPanel } from './painel/ContentPanels'
 import { ConvitePanel } from './painel/ConvitePanel'
+import { ImportarPanel } from './painel/ImportarPanel'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -80,6 +81,7 @@ const SECTIONS: Section[] = [
   { slug: 'informacoes', label: 'Informações', group: 'O site', num: 'IV', render: () => <InformacoesPanel /> },
   { slug: 'presentes', label: 'Lista do casamento', group: 'Presentes', num: 'V', render: () => <ListasPanel /> },
   { slug: 'cha', label: 'Chá de Panela', group: 'Presentes', num: 'VI', render: () => <ListasPanel initial="cha" /> },
+  { slug: 'importar', label: 'Adicionar pela loja', group: 'Presentes', render: () => <ImportarPanel /> },
   { slug: 'recebidos', label: 'Presentes recebidos', group: 'Presentes', num: 'VII', render: () => <RecebidosPanel /> },
   { slug: 'convite', label: 'Convite do Chá', group: 'Convidados', render: () => <ConvitePanel /> },
   { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VIII', render: () => <RecadosPanel /> },
@@ -178,6 +180,8 @@ function Overview() {
             ? `${plural(sum.cha, 'item', 'itens')} · ${plural(sum.chaReservados, 'reservado', 'reservados')}`
             : 'Lista por cômodos — comece colando a lista',
         }
+      case 'importar':
+        return { text: 'Shopee e outras lojas: nome, valor, foto e link num clique' }
       case 'recebidos':
         return { text: sum.recebidos ? `${formatBRL(sum.recebidoCents)} em ${plural(sum.recebidos, 'presente', 'presentes')}` : 'Nenhum ainda' }
       case 'convite':

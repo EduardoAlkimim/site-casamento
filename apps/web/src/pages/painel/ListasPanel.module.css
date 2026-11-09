@@ -32,10 +32,20 @@
 }
 
 .giftRow {
+  position: relative;
   display: grid;
   gap: var(--space-2);
   padding-block: var(--space-3);
   border-bottom: var(--hairline);
+  /* alça ⠿ (posicionada pela lista arrastável) centrada na foto */
+  --handle-top: calc(var(--space-3) + (4.375rem - 2.75rem) / 2);
+  /* Com 500 itens, o navegador só desenha as linhas que estão na tela. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 9rem;
+}
+
+.giftRow .summary {
+  padding-left: 2rem;
 }
 
 .summary {

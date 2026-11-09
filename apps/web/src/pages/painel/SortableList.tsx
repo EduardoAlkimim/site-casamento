@@ -14,6 +14,8 @@ import styles from './SortableList.module.css'
 
 // Lista que reordena arrastando pela alça ⠿ (mouse, dedo ou teclado:
 // foco na alça, espaço, setas, espaço). Devolve a nova ordem dos ids.
+// O conteúdo de cada linha chega pronto (children) e não é redesenhado
+// durante o arrasto — só a moldura se move. Com 500 itens isso pesa.
 
 export function SortableList({
   ids,
@@ -30,12 +32,27 @@ export function SortableList({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
+  // O site rola "suave" (scroll-behavior: smooth), e isso anula a rolagem
+  // automática do arrasto — cada passinho é cancelado pelo seguinte e a
+  // página não sai do lugar. Durante o arrasto a rolagem fica instantânea.
+  const html = document.documentElement
+  const start = () => (html.style.scrollBehavior = 'auto')
+  const restore = () => (html.style.scrollBehavior = '')
+
   const end = ({ active, over }: DragEndEvent) => {
+    restore()
     if (!over || active.id === over.id) return
     onReorder(arrayMove(ids, ids.indexOf(Number(active.id)), ids.indexOf(Number(over.id))))
   }
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={end}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      autoScroll={{ threshold: { x: 0, y: 0.2 }, acceleration: 70 }}
+      onDragStart={start}
+      onDragEnd={end}
+      onDragCancel={restore}
+    >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <ul className={className}>{children}</ul>
       </SortableContext>
@@ -52,7 +69,7 @@ export function SortableItem({
   id: number
   label: string
   className?: string
-  children: (handle: ReactNode) => ReactNode
+  children: ReactNode
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
   const handle = (
@@ -80,7 +97,8 @@ export function SortableItem({
       className={`${className ?? ''} ${isDragging ? styles.dragging : ''}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
     >
-      {children(handle)}
+      {handle}
+      {children}
     </li>
   )
 }
