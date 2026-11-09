@@ -47,6 +47,10 @@ const listGifts = (list: List, forAdmin = false) =>
     ...(forAdmin ? { reservedBy, reservedContact, reservedAt, hidden: hidden === 1 } : {}),
   }))
 
+/** Resposta curta (?leve=1): só o item salvo, em vez da lista inteira (~200 KB no celular). */
+const oneGift = (list: List, id: number) => ({ gift: listGifts(list, true).find(g => g.id === id) ?? null })
+const wantsLight = (q: unknown) => (q as { leve?: string } | undefined)?.leve === '1'
+
 const listRooms = (list: List) =>
   db.prepare('SELECT id, name FROM gift_rooms WHERE list = ? ORDER BY position').all(list) as { id: number; name: string }[]
 
@@ -179,7 +183,7 @@ export async function giftRoutes(app: FastifyInstance) {
         if (!isList(list)) return reply.code(404).send({ error: 'Lista não encontrada.' })
         const g = req.body
         if (!roomBelongs(g.roomId, list)) return reply.code(400).send({ error: 'Cômodo inválido.' })
-        db.prepare(
+        const created = db.prepare(
           `INSERT INTO gifts (list, position, name, description, image, price_cents, status, purchase_mode, external_url, room_id, hidden)
            VALUES (?, (SELECT COALESCE(MAX(position), 0) + 1 FROM gifts WHERE list = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
@@ -195,6 +199,7 @@ export async function giftRoutes(app: FastifyInstance) {
           g.roomId ?? null,
           g.hidden ? 1 : 0,
         )
+        if (wantsLight(req.query)) return reply.code(201).send(oneGift(list, Number(created.lastInsertRowid)))
         return reply.code(201).send(listData(list, true))
       },
     )
@@ -224,6 +229,7 @@ export async function giftRoutes(app: FastifyInstance) {
           db.prepare('UPDATE gifts SET reserved_by = NULL, reserved_contact = NULL, reserved_at = NULL WHERE id = ?').run(id)
         }
         if ('image' in req.body && req.body.image !== current.image) await removeUpload(current.image)
+        if (wantsLight(req.query)) return oneGift(current.list, id)
         return listData(current.list, true)
       },
     )

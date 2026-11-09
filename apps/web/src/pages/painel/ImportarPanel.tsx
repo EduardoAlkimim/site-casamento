@@ -21,7 +21,8 @@ type Draft = {
   upload?: { image: string; url: string }
   name: string
   description: string
-  roomId: number | null
+  /** Cômodo escolhido aqui. Sem escolha: o do item que vai ser preenchido. */
+  room?: number | null
   saved?: string
 }
 
@@ -156,7 +157,6 @@ export function ImportarPanel() {
             imageUrl: raw.image ? fullImage(raw.image) : '',
             name: '',
             description: title,
-            roomId: null,
           },
           ...prev,
         ]
@@ -208,35 +208,50 @@ export function ImportarPanel() {
     [gifts],
   )
 
+  const roomOf = (d: Draft, target: Gift | null) => (d.room !== undefined ? d.room : (target?.roomId ?? null))
+
+  /** Foto: o servidor baixa da loja e guarda (o celular não precisa baixar nem reenviar). */
+  const storeImage = async (url: string) => {
+    try {
+      return (await api<{ image: string }>('/admin/imagem-externa', { body: { url } })).image
+    } catch {
+      // Plano B: pelo navegador, como antes.
+      const res = await fetch(`/api/admin/imagem-externa?url=${encodeURIComponent(url)}`, { credentials: 'same-origin' })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Não consegui baixar a foto.')
+      const blob = await res.blob()
+      return (await uploadImage(await resizeImage(new File([blob], 'foto', { type: blob.type })))).image
+    }
+  }
+
   const save = async (d: Draft) => {
     const priceCents = parseBRL(d.price)
     if (Number.isNaN(priceCents)) throw new Error('Valor inválido. Use só números, ex.: 49,90.')
     if (list === 'casamento' && priceCents == null) throw new Error('Na lista do casamento o valor é obrigatório (é o que o convidado paga).')
-    let image = d.upload?.image
-    if (!image && d.imageUrl) {
-      const res = await fetch(`/api/admin/imagem-externa?url=${encodeURIComponent(d.imageUrl)}`, { credentials: 'same-origin' })
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Não consegui baixar a foto.')
-      const blob = await res.blob()
-      image = (await uploadImage(await resizeImage(new File([blob], 'foto', { type: blob.type })))).image
-    }
+    const image = d.upload?.image ?? (d.imageUrl ? await storeImage(d.imageUrl) : undefined)
     const target = targetOf(d)
+    const room = roomOf(d, target)
     const fill = {
       description: d.description.trim().slice(0, 600),
       priceCents,
       externalUrl: d.url,
       ...(image ? { image } : {}),
+      ...(rooms.length && (!target || room !== target.roomId) ? { roomId: room } : {}),
     }
-    const result = target
-      ? await api<GiftListData>(`/admin/presentes/${target.id}`, { method: 'PATCH', body: fill })
-      : await api<GiftListData>(`/admin/listas/${list}/presentes`, {
+    // ?leve=1: o servidor devolve só o item salvo, não a lista inteira.
+    const { gift } = target
+      ? await api<{ gift: Gift }>(`/admin/presentes/${target.id}?leve=1`, { method: 'PATCH', body: fill })
+      : await api<{ gift: Gift }>(`/admin/listas/${list}/presentes?leve=1`, {
           body: {
             ...fill,
             name: (d.name.trim() || shortName(d.title) || 'Presente').slice(0, 120),
             purchaseMode: list === 'cha' ? 'reserva' : 'site',
-            roomId: d.roomId,
           },
         })
-    setData(prev => ({ ...prev, [list]: { ...prev[list]!, ...result } }))
+    setData(prev => {
+      const cur = prev[list]!
+      const gifts = cur.gifts.some(g => g.id === gift.id) ? cur.gifts.map(g => (g.id === gift.id ? gift : g)) : [...cur.gifts, gift]
+      return { ...prev, [list]: { ...cur, gifts } }
+    })
     update(d.key, { saved: target ? `Preenchido: ${target.name}` : `Novo item: ${d.name.trim() || shortName(d.title)}`, upload: undefined })
   }
 
@@ -346,9 +361,9 @@ export function ImportarPanel() {
           <DraftCard
             key={d.key}
             draft={d}
-            list={list}
             rooms={rooms}
             target={ready ? targetOf(d) : null}
+            room={roomOf(d, ready ? targetOf(d) : null)}
             sameLink={gifts.find(g => g.externalUrl === d.url) ?? null}
             onChange={patch => update(d.key, patch)}
             onSave={() => saveOne(d)}
@@ -364,9 +379,9 @@ export function ImportarPanel() {
 /* ── Um produto da fila ──────────────────────────────────────────────── */
 function DraftCard({
   draft: d,
-  list,
   rooms,
   target,
+  room,
   sameLink,
   onChange,
   onSave,
@@ -374,9 +389,9 @@ function DraftCard({
   onError,
 }: {
   draft: Draft
-  list: GiftListName
   rooms: { id: number; name: string }[]
   target: Gift | null
+  room: number | null
   sameLink: Gift | null
   onChange: (p: Partial<Draft>) => void
   onSave: () => Promise<void>
@@ -424,7 +439,8 @@ function DraftCard({
     if (/^https:\/\//.test(url)) onChange({ imageUrl: fullImage(url.trim()), upload: undefined })
   }
 
-  const preview = d.upload?.url ?? (d.imageUrl ? `/api/admin/imagem-externa?url=${encodeURIComponent(d.imageUrl)}` : null)
+  // Prévia direto do servidor de imagens da loja (miniatura na Shopee): leve.
+  const preview = d.upload?.url ?? (d.imageUrl ? (/susercontent\.com\/file\/[^/?#@_]+$/.test(d.imageUrl) ? `${d.imageUrl}_tn` : d.imageUrl) : null)
 
   if (d.saved) {
     return (
@@ -444,7 +460,7 @@ function DraftCard({
   return (
     <li className={styles.card} onPaste={onPaste} onDragOver={e => e.preventDefault()} onDrop={onDrop}>
       <div className={styles.photo}>
-        {preview ? <img src={preview} alt="" /> : <span>Sem foto</span>}
+        {preview ? <img src={preview} alt="" referrerPolicy="no-referrer" /> : <span>Sem foto</span>}
         <input
           ref={fileRef}
           type="file"
@@ -477,19 +493,18 @@ function DraftCard({
         <p className={styles.hint}>
           {target ? (
             <>
-              Vai preencher <strong>{target.name}</strong>
-              {target.roomId && rooms.find(r => r.id === target.roomId) ? ` (${rooms.find(r => r.id === target.roomId)!.name})` : ''} com
-              descrição, valor, link e foto.
+              Vai preencher <strong>{target.name}</strong> com descrição, valor, link e foto
+              {rooms.length > 0 && room !== target.roomId ? ` e mudar o cômodo para “${rooms.find(r => r.id === room)?.name ?? 'Sem cômodo'}”` : ''}.
             </>
           ) : (
-            <>Vai criar um item novo{list === 'cha' ? ' — escolha o cômodo' : ''}.</>
+            <>Vai criar um item novo.</>
           )}
         </p>
 
-        {!target && list === 'cha' && rooms.length > 0 && (
+        {rooms.length > 0 && (
           <label className={styles.field}>
             <span>Cômodo</span>
-            <select value={d.roomId ?? ''} onChange={e => onChange({ roomId: e.target.value ? Number(e.target.value) : null })}>
+            <select value={room ?? ''} onChange={e => onChange({ room: e.target.value ? Number(e.target.value) : null })}>
               <option value="">Sem cômodo</option>
               {rooms.map(r => (
                 <option key={r.id} value={r.id}>

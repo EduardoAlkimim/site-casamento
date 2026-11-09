@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { requireAdmin } from '../auth.ts'
+import { saveImage } from './uploads.ts'
 
 // "Adicionar pela loja": o painel recebe nome, preço e foto lidos na página
 // da loja (no navegador dos noivos). A foto mora no servidor de imagens da
@@ -37,7 +38,44 @@ const allowed = (raw: string) => {
   }
 }
 
+/** Baixa a foto da loja (só de servidores conhecidos). */
+async function download(raw: string): Promise<{ type: string; body: Buffer } | { status: number; error: string }> {
+  const url = allowed(raw)
+  if (!url) return { status: 400, error: 'Essa foto não é de uma loja conhecida. Salve a imagem e envie pelo botão de foto.' }
+  let res: Response
+  try {
+    res = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(15_000) })
+  } catch {
+    return { status: 502, error: 'Não consegui baixar a foto da loja.' }
+  }
+  const type = res.headers.get('content-type') ?? ''
+  if (!res.ok || !type.startsWith('image/')) return { status: 502, error: 'Não consegui baixar a foto da loja.' }
+  const body = Buffer.from(await res.arrayBuffer())
+  if (body.length > MAX_BYTES) return { status: 413, error: 'Foto grande demais.' }
+  return { type, body }
+}
+
 export async function importRoutes(app: FastifyInstance) {
+  // O servidor baixa a foto da loja e guarda direto, sem passar pelo celular
+  // (antes o celular baixava a foto inteira e mandava de volta: lento no 4G).
+  app.post<{ Body: { url: string } }>(
+    '/admin/imagem-externa',
+    {
+      preHandler: requireAdmin,
+      schema: { body: { type: 'object', required: ['url'], properties: { url: { type: 'string', maxLength: 2000 } } } },
+    },
+    async (req, reply) => {
+      const got = await download(req.body.url)
+      if ('error' in got) return reply.code(got.status).send({ error: got.error })
+      try {
+        return reply.code(201).send(await saveImage(got.body))
+      } catch (err) {
+        const e = err as Error & { statusCode?: number }
+        return reply.code(e.statusCode ?? 500).send({ error: e.message })
+      }
+    },
+  )
+
   app.get<{ Querystring: { url: string } }>(
     '/admin/imagem-externa',
     {
@@ -45,19 +83,10 @@ export async function importRoutes(app: FastifyInstance) {
       schema: { querystring: { type: 'object', required: ['url'], properties: { url: { type: 'string', maxLength: 2000 } } } },
     },
     async (req, reply) => {
-      const url = allowed(req.query.url)
-      if (!url) return reply.code(400).send({ error: 'Essa foto não é de uma loja conhecida. Salve a imagem e envie pelo botão de foto.' })
-      let res: Response
-      try {
-        res = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(15_000) })
-      } catch {
-        return reply.code(502).send({ error: 'Não consegui baixar a foto da loja.' })
-      }
-      const type = res.headers.get('content-type') ?? ''
-      if (!res.ok || !type.startsWith('image/')) return reply.code(502).send({ error: 'Não consegui baixar a foto da loja.' })
-      const body = Buffer.from(await res.arrayBuffer())
-      if (body.length > MAX_BYTES) return reply.code(413).send({ error: 'Foto grande demais.' })
-      return reply.header('content-type', type).header('cache-control', 'private, max-age=600').send(body)
+      // Só para a prévia no card.
+      const got = await download(req.query.url)
+      if ('error' in got) return reply.code(got.status).send({ error: got.error })
+      return reply.header('content-type', got.type).header('cache-control', 'private, max-age=600').send(got.body)
     },
   )
 }

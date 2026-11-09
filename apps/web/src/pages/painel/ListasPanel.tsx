@@ -56,6 +56,20 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
     }
   }
 
+  // Mexer num item só: o servidor devolve só ele (?leve=1), não a lista
+  // inteira — com 500 itens eram ~200 KB por clique, lento no celular.
+  const patchGift = async (id: number, body: Record<string, unknown>) => {
+    setError(undefined)
+    try {
+      const { gift } = await api<{ gift: Gift }>(`/admin/presentes/${id}?leve=1`, { method: 'PATCH', body })
+      setData(prev => (prev ? { ...prev, gifts: prev.gifts.map(g => (g.id === id ? gift : g)) } : prev))
+      return true
+    } catch (err) {
+      setError((err as Error).message)
+      return false
+    }
+  }
+
   const importList = async (path: string, init: { method?: string; body?: unknown }) => {
     setError(undefined)
     try {
@@ -239,7 +253,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                       variant="quiet"
                       onClick={() =>
                         confirm(`Liberar “${gift.name}”? Ele volta a ficar disponível para outra pessoa.`) &&
-                        apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body: { status: 'disponivel' } })
+                        patchGift(gift.id, { status: 'disponivel' })
                       }
                     >
                       Liberar reserva
@@ -248,7 +262,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                   <Button
                     variant="quiet"
                     aria-label={`${gift.hidden ? 'Mostrar' : 'Esconder'} ${gift.name} para os convidados`}
-                    onClick={() => apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body: { hidden: !gift.hidden } })}
+                    onClick={() => patchGift(gift.id, { hidden: !gift.hidden })}
                   >
                     {gift.hidden ? 'Mostrar' : 'Esconder'}
                   </Button>
@@ -276,7 +290,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                     gift={gift}
                     onCancel={() => setLinking(null)}
                     onSave={async url => {
-                      const ok = await apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body: { externalUrl: url } })
+                      const ok = await patchGift(gift.id, { externalUrl: url })
                       if (ok) setLinking(null)
                       return ok
                     }}
@@ -290,7 +304,7 @@ export function ListasPanel({ initial = 'casamento' }: { initial?: GiftListName 
                     defaultRoom={null}
                     onCancel={() => setEditing(null)}
                     onSave={async body => {
-                      const ok = await apply(`/admin/presentes/${gift.id}`, { method: 'PATCH', body })
+                      const ok = await patchGift(gift.id, body)
                       if (ok) setEditing(null)
                       return ok
                     }}

@@ -24,6 +24,16 @@ function sniff(buf: Buffer): keyof typeof TYPES | null {
 // Upload na VM (nome aleatório) ou foto fixa do site (/fotos/...).
 export const imageUrl = (name: string | null) => (!name ? null : name.startsWith('/') ? name : `/api/uploads/${name}`)
 
+/** Grava uma imagem já em memória (foto baixada da loja pelo servidor). */
+export async function saveImage(buf: Buffer) {
+  if (buf.length > MAX_BYTES) throw Object.assign(new Error('Foto grande demais.'), { statusCode: 413 })
+  const ext = sniff(buf)
+  if (!ext) throw Object.assign(new Error('Formato de foto não suportado.'), { statusCode: 415 })
+  const name = `${randomBytes(16).toString('hex')}.${ext}`
+  await writeFile(join(config.uploadsDir, name), buf)
+  return { image: name, url: imageUrl(name) }
+}
+
 export async function removeUpload(name: string | null) {
   if (name && NAME.test(name)) await unlink(join(config.uploadsDir, name)).catch(() => {})
 }
