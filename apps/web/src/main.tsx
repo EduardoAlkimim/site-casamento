@@ -1,4 +1,4 @@
-import { StrictMode, type ReactNode } from 'react'
+import { lazy, StrictMode, Suspense, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import './styles/base.css'
@@ -16,6 +16,9 @@ import Padrinhos from './pages/Padrinhos'
 import Painel from './pages/Painel'
 import Soon from './pages/Soon'
 
+// Convite do chá: página à parte (sem o menu do site), carregada só quando abrem o link.
+const ConviteCha = lazy(() => import('./pages/ConviteCha'))
+
 // Páginas que podem ser bloqueadas pelo painel (slug = caminho sem a barra).
 const content: Record<string, ReactNode> = {
   presentes: <GiftList list="casamento" />,
@@ -30,6 +33,14 @@ const gated = ['nossa-historia', 'informacoes', 'cha-de-panela', 'presentes', 'r
 }))
 
 const router = createBrowserRouter([
+  {
+    path: '/cha',
+    element: (
+      <Suspense fallback={null}>
+        <ConviteCha />
+      </Suspense>
+    ),
+  },
   {
     element: <SiteLayout />,
     children: [

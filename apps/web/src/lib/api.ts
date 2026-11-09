@@ -128,3 +128,31 @@ export type SiteTexts = {
   city: string
 }
 export type Pendencia = { area: string; label: string; anchor: string }
+
+/* ── Convite do Chá de Panela ─────────────────────────────────────────── */
+export type ConviteTexts = {
+  intro: string
+  letter: string
+  mapsUrl: string
+  homeText: string
+  homeUrl: string
+  rsvpNote: string
+  verse: string
+  verseRef: string
+  closing: string
+}
+export type Rsvp = {
+  id: number
+  name: string
+  attending: boolean
+  people: number
+  phone: string | null
+  message: string | null
+  createdAt: string
+}
+export type ConviteAdmin = {
+  texts: ConviteTexts
+  event: ChaEvent
+  rsvps: Rsvp[]
+  totals: { confirmed: number; people: number; declined: number }
+}

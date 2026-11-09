@@ -12,6 +12,7 @@ import { SectionEditor } from './painel/ManualEditor'
 import { ListasPanel } from './painel/ListasPanel'
 import { RecebidosPanel } from './painel/RecebidosPanel'
 import { AvisosPanel, HistoriaPanel, InformacoesPanel, InicioPanel, PendenciasPanel, RecadosPanel } from './painel/ContentPanels'
+import { ConvitePanel } from './painel/ConvitePanel'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -80,6 +81,7 @@ const SECTIONS: Section[] = [
   { slug: 'presentes', label: 'Lista do casamento', group: 'Presentes', num: 'V', render: () => <ListasPanel /> },
   { slug: 'cha', label: 'Chá de Panela', group: 'Presentes', num: 'VI', render: () => <ListasPanel initial="cha" /> },
   { slug: 'recebidos', label: 'Presentes recebidos', group: 'Presentes', num: 'VII', render: () => <RecebidosPanel /> },
+  { slug: 'convite', label: 'Convite do Chá', group: 'Convidados', render: () => <ConvitePanel /> },
   { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VIII', render: () => <RecadosPanel /> },
   { slug: 'padrinhos', label: 'Padrinhos e tags NFC', group: 'Convidados', num: 'IX', render: () => <PadrinhosPanel /> },
   { slug: 'manual', label: 'Manual do Padrinho', group: 'Convidados', num: 'X', render: () => <ManualPanel /> },
@@ -112,6 +114,7 @@ type Summary = {
   presentes: number
   cha: number
   chaReservados: number
+  chaPessoas: number | null
 }
 
 function Overview() {
@@ -128,7 +131,8 @@ function Overview() {
       safe(api<{ padrinhos: unknown[] }>('/admin/padrinhos'), { padrinhos: [] }),
       safe(api<{ gifts: unknown[] }>('/admin/listas/casamento'), { gifts: [] }),
       safe(api<{ gifts: { status: string }[] }>('/admin/listas/cha'), { gifts: [] }),
-    ]).then(([p, r, pay, pad, gc, gh]) => {
+      safe(api<{ totals: { people: number } }>('/admin/convite'), null),
+    ]).then(([p, r, pay, pad, gc, gh, cv]) => {
       const approved = pay.payments.filter(x => x.status === 'approved')
       setSum({
         pendencias: p.items.length,
@@ -139,6 +143,7 @@ function Overview() {
         presentes: gc.gifts.length,
         cha: gh.gifts.length,
         chaReservados: gh.gifts.filter(g => g.status === 'reservado').length,
+        chaPessoas: cv?.totals.people ?? null,
       })
     })
   }, [])
@@ -175,6 +180,8 @@ function Overview() {
         }
       case 'recebidos':
         return { text: sum.recebidos ? `${formatBRL(sum.recebidoCents)} em ${plural(sum.recebidos, 'presente', 'presentes')}` : 'Nenhum ainda' }
+      case 'convite':
+        return { text: sum.chaPessoas ? `${plural(sum.chaPessoas, 'pessoa confirmada', 'pessoas confirmadas')}` : 'Link para o PDF e confirmações' }
       case 'recados':
         return sum.recadosNovos ? { text: plural(sum.recadosNovos, 'novo', 'novos'), alert: true } : { text: 'Nenhum novo' }
       case 'padrinhos':

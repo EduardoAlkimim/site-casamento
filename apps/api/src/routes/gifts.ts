@@ -59,7 +59,7 @@ const pageText = (list: List) =>
 
 /* ── Dados do evento do chá (data, horário, local, endereço) ─────────── */
 const EVENT_KEYS = { date: 'cha.date', time: 'cha.time', venue: 'cha.venue', address: 'cha.address' } as const
-const readEvent = () => {
+export const readEvent = () => {
   const get = db.prepare('SELECT value FROM settings WHERE key = ?')
   return Object.fromEntries(
     Object.entries(EVENT_KEYS).map(([k, key]) => [k, (get.get(key) as { value: string } | undefined)?.value ?? '']),

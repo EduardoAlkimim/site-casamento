@@ -259,6 +259,28 @@ const migrations: string[] = [
   -- Item escondido: continua no painel (dá para editar e pôr link), mas os convidados não veem.
   ALTER TABLE gifts ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  -- Convite do Chá de Panela: confirmações de presença e textos editáveis.
+  CREATE TABLE cha_rsvp (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    attending INTEGER NOT NULL CHECK (attending IN (0, 1)),
+    people INTEGER NOT NULL DEFAULT 1 CHECK (people BETWEEN 0 AND 20),
+    phone TEXT,
+    message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  INSERT OR IGNORE INTO settings (key, value) VALUES
+    ('convite.intro', 'Será uma tarde especial, cheia de amor e momentos inesquecíveis enquanto nos preparamos para essa nova etapa em nossas vidas.'),
+    ('convite.letter', '**Há momentos que ficam guardados para sempre no coração. Este é um deles.** Com alegria, gratidão e muito amor, queremos celebrar ao lado de pessoas especiais o início de uma nova etapa da nossa história. **Sua presença tornará este dia ainda mais inesquecível e cheio de significado para nós.**'),
+    ('convite.mapsUrl', 'https://maps.app.goo.gl/C1Kte7TtyG898yNQ9'),
+    ('convite.homeText', 'Caso deseje enviar o seu presente direto na nossa casinha nova, esse é o endereço:'),
+    ('convite.homeUrl', 'https://maps.app.goo.gl/LJVf6qK9yFBJPMLE6'),
+    ('convite.rsvpNote', ''),
+    ('convite.verse', 'Para que todos vejam, e saibam, e considerem, e juntamente entendam que a mão do Senhor fez isso'),
+    ('convite.verseRef', 'Isaías 41:20'),
+    ('convite.closing', 'Esperamos você para celebrar conosco!');
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }
