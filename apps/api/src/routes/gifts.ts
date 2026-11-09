@@ -180,8 +180,8 @@ export async function giftRoutes(app: FastifyInstance) {
         const g = req.body
         if (!roomBelongs(g.roomId, list)) return reply.code(400).send({ error: 'Cômodo inválido.' })
         db.prepare(
-          `INSERT INTO gifts (list, position, name, description, image, price_cents, status, purchase_mode, external_url, room_id)
-           VALUES (?, (SELECT COALESCE(MAX(position), 0) + 1 FROM gifts WHERE list = ?), ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO gifts (list, position, name, description, image, price_cents, status, purchase_mode, external_url, room_id, hidden)
+           VALUES (?, (SELECT COALESCE(MAX(position), 0) + 1 FROM gifts WHERE list = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           list,
           list,
@@ -193,6 +193,7 @@ export async function giftRoutes(app: FastifyInstance) {
           g.purchaseMode ?? defaultMode(list),
           g.externalUrl ?? null,
           g.roomId ?? null,
+          g.hidden ? 1 : 0,
         )
         return reply.code(201).send(listData(list, true))
       },
