@@ -254,3 +254,14 @@
   padding-left: 1.1rem;
   font-size: var(--fs-small);
 }
+
+.code {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: var(--fs-small);
+  overflow-wrap: anywhere;
+  user-select: all;
+}

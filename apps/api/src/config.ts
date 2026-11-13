@@ -23,4 +23,8 @@ export const config = {
   resendApiKey: process.env.RESEND_API_KEY ?? '',
   notifyTo: (process.env.NOTIFY_EMAILS ?? '').split(',').map(s => s.trim()).filter(Boolean),
   notifyFrom: process.env.NOTIFY_FROM ?? 'Site do casamento <avisos@eduardothamires.com.br>',
+  // Mercado Livre (app em developers.mercadolivre.com.br): confere os preços
+  // dos itens do ML todo dia. Sem as duas, o robô fica desligado.
+  mlClientId: process.env.ML_CLIENT_ID ?? '',
+  mlClientSecret: process.env.ML_CLIENT_SECRET ?? '',
 }

@@ -14,6 +14,7 @@ import { RecebidosPanel } from './painel/RecebidosPanel'
 import { AvisosPanel, HistoriaPanel, InformacoesPanel, InicioPanel, PendenciasPanel, RecadosPanel } from './painel/ContentPanels'
 import { ConvitePanel } from './painel/ConvitePanel'
 import { ImportarPanel } from './painel/ImportarPanel'
+import { PrecosPanel } from './painel/PrecosPanel'
 
 export default function Painel() {
   const { admin, ready } = useAccess()
@@ -82,6 +83,7 @@ const SECTIONS: Section[] = [
   { slug: 'presentes', label: 'Lista do casamento', group: 'Presentes', num: 'V', render: () => <ListasPanel /> },
   { slug: 'cha', label: 'Chá de Panela', group: 'Presentes', num: 'VI', render: () => <ListasPanel initial="cha" /> },
   { slug: 'importar', label: 'Adicionar pela loja', group: 'Presentes', render: () => <ImportarPanel /> },
+  { slug: 'precos', label: 'Preços automáticos', group: 'Presentes', render: () => <PrecosPanel /> },
   { slug: 'recebidos', label: 'Presentes recebidos', group: 'Presentes', num: 'VII', render: () => <RecebidosPanel /> },
   { slug: 'convite', label: 'Convite do Chá', group: 'Convidados', render: () => <ConvitePanel /> },
   { slug: 'recados', label: 'Recados', group: 'Convidados', num: 'VIII', render: () => <RecadosPanel /> },
@@ -182,6 +184,8 @@ function Overview() {
         }
       case 'importar':
         return { text: 'Shopee e outras lojas: nome, valor, foto e link num clique' }
+      case 'precos':
+        return { text: 'Mercado Livre conferido sozinho todo dia' }
       case 'recebidos':
         return { text: sum.recebidos ? `${formatBRL(sum.recebidoCents)} em ${plural(sum.recebidos, 'presente', 'presentes')}` : 'Nenhum ainda' }
       case 'convite':
