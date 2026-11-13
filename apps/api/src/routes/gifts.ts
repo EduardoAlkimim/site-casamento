@@ -25,6 +25,7 @@ type GiftRow = {
   reservedContact: string | null
   reservedAt: string | null
   hidden: number
+  priceCheckedAt: string | null
 }
 
 /** Quem reservou só aparece para os noivos. */
@@ -34,17 +35,18 @@ const listGifts = (list: List, forAdmin = false) =>
       .prepare(
         `SELECT id, name, description, image, price_cents AS priceCents, status,
                 purchase_mode AS purchaseMode, external_url AS externalUrl, room_id AS roomId,
-                reserved_by AS reservedBy, reserved_contact AS reservedContact, reserved_at AS reservedAt, hidden
+                reserved_by AS reservedBy, reserved_contact AS reservedContact, reserved_at AS reservedAt, hidden,
+                price_checked_at AS priceCheckedAt
          FROM gifts WHERE list = ? ${forAdmin ? '' : 'AND hidden = 0'} ORDER BY position`,
       )
       .all(list) as GiftRow[]
-  ).map(({ reservedBy, reservedContact, reservedAt, hidden, ...g }) => ({
+  ).map(({ reservedBy, reservedContact, reservedAt, hidden, priceCheckedAt, ...g }) => ({
     ...g,
     imageUrl: imageUrl(g.image),
     // Item de reserva: o link da loja só é entregue depois que a pessoa reserva
     // (senão dava para comprar sem reservar e o casal ganhava repetido).
     ...(g.purchaseMode === 'reserva' && !forAdmin ? { externalUrl: null, hasLink: Boolean(g.externalUrl) } : {}),
-    ...(forAdmin ? { reservedBy, reservedContact, reservedAt, hidden: hidden === 1 } : {}),
+    ...(forAdmin ? { reservedBy, reservedContact, reservedAt, hidden: hidden === 1, priceCheckedAt } : {}),
   }))
 
 /** Resposta curta (?leve=1): só o item salvo, em vez da lista inteira (~200 KB no celular). */
@@ -90,10 +92,12 @@ const giftBody = {
     externalUrl: { type: ['string', 'null'], maxLength: 500, pattern: '^https?://' },
     roomId: { type: ['integer', 'null'], minimum: 1 },
     hidden: { type: 'boolean' },
+    /** Preço conferido na loja agora (marca a data; não é uma coluna editável). */
+    priceChecked: { type: 'boolean' },
   },
 }
 
-type GiftInput = Partial<Omit<GiftRow, 'id' | 'reservedBy' | 'reservedContact' | 'reservedAt' | 'hidden'> & { hidden: boolean }>
+type GiftInput = Partial<Omit<GiftRow, 'id' | 'reservedBy' | 'reservedContact' | 'reservedAt' | 'hidden' | 'priceCheckedAt'> & { hidden: boolean }>
 
 const COLUMNS: Record<keyof GiftInput, string> = {
   name: 'name',
@@ -223,6 +227,9 @@ export async function giftRoutes(app: FastifyInstance) {
           const sets = entries.map(([k]) => `${COLUMNS[k]} = ?`).join(', ')
           const values = entries.map(([, v]) => (typeof v === 'string' ? v.trim() : typeof v === 'boolean' ? Number(v) : v)) as (string | number | null)[]
           db.prepare(`UPDATE gifts SET ${sets} WHERE id = ?`).run(...values, id)
+        }
+        if ((req.body as { priceChecked?: boolean }).priceChecked) {
+          db.prepare("UPDATE gifts SET price_checked_at = datetime('now') WHERE id = ?").run(id)
         }
         // Voltou a ficar disponível: esquece quem tinha reservado.
         if (req.body.status === 'disponivel') {

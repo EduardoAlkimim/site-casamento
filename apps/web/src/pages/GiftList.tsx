@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { isStorePrice, priceLabel, STORE_PRICE_NOTE } from '../lib/storePrice'
 import { api, type ChaEvent, type Gift, type GiftListData, type GiftListName, type PaymentConfig } from '../lib/api'
-import { formatBRL } from '../lib/money'
 import { BananaLeaf, Monstera, PalmFrond, Sprig } from '../design-system/botanicals/Botanicals'
 import { Divider, Eyebrow } from '../design-system/components/Ornaments'
 import styles from './GiftList.module.css'
@@ -56,6 +56,9 @@ export default function GiftList({ list }: { list: GiftListName }) {
         <Eyebrow>{data?.page.title ?? (list === 'cha' ? 'Chá de Panela' : 'Lista de Presentes')}</Eyebrow>
         {data && <h1 className={styles.title}>{data.page.heading || data.page.title}</h1>}
         {data?.page.intro && <p className={styles.intro}>{data.page.intro}</p>}
+        {data?.gifts.some(g => isStorePrice(g) && g.priceCents != null) && (
+          <p className={styles.storeNote}>≈ Os valores das lojas são de referência e podem mudar no site da loja.</p>
+        )}
       </header>
 
       {data?.event && <EventDetails event={data.event} />}
@@ -252,7 +255,12 @@ function GiftItem({
         <div className={styles.compactText}>
           <h3 className={styles.compactName}>{gift.name}</h3>
           {gift.description && <p className={styles.description}>{gift.description}</p>}
-          {gift.priceCents != null && <span className={styles.compactPrice}>{formatBRL(gift.priceCents)}</span>}
+          {gift.priceCents != null && (
+            <span className={styles.compactPrice} title={isStorePrice(gift) ? STORE_PRICE_NOTE : undefined}>
+              {priceLabel(gift)}
+              {isStorePrice(gift) && <span className="visually-hidden"> ({STORE_PRICE_NOTE})</span>}
+            </span>
+          )}
         </div>
         {taken ? (
           <span className={styles.compactBadge}>{gift.status === 'presenteado' ? 'Presenteado' : 'Reservado'}</span>
@@ -297,7 +305,12 @@ function GiftItem({
       {gift.description && <p className={styles.description}>{gift.description}</p>}
 
       <div className={styles.foot}>
-        {gift.priceCents != null && <span className={styles.price}>{formatBRL(gift.priceCents)}</span>}
+        {gift.priceCents != null && (
+          <span className={styles.priceWrap}>
+            <span className={styles.price}>{priceLabel(gift)}</span>
+            {isStorePrice(gift) && <span className={styles.priceNote}>valor de referência</span>}
+          </span>
+        )}
         {/* O botão "se estica" sobre o card inteiro: tocar em qualquer lugar presenteia. */}
         {!given && gift.purchaseMode === 'link' && gift.externalUrl && (
           <a className={`${styles.cta} ${styles.ctaOutline}`} href={gift.externalUrl} target="_blank" rel="noopener noreferrer">

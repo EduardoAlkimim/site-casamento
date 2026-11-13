@@ -64,6 +64,8 @@ export type Gift = {
   reservedAt?: string | null
   /** Escondido dos convidados (só vem para os noivos). */
   hidden?: boolean
+  /** Quando o preço de loja foi conferido (só vem para os noivos). */
+  priceCheckedAt?: string | null
 }
 export type GiftRoom = { id: number; name: string }
 export type ChaEvent = { date: string; time: string; venue: string; address: string }

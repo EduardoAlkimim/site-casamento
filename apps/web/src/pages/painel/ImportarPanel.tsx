@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent } from 'react'
 import { api, uploadImage, type Gift, type GiftListData, type GiftListName } from '../../lib/api'
-import { centsToInput, formatBRL, parseBRL } from '../../lib/money'
+import { formatBRL, parseBRL } from '../../lib/money'
 import { resizeImage } from '../../lib/resizeImage'
 import { Button } from '../../design-system/components/Button'
 import { Eyebrow } from '../../design-system/components/Ornaments'
 import base from '../Painel.module.css'
 import styles from './ImportarPanel.module.css'
+import { priceInput, type CheckHandler, type Incoming, type Reply } from './loja'
+import { PriceCheck } from './PriceCheck'
 
 // "Adicionar pela loja": um botão nos favoritos lê o produto na página da loja
 // (no navegador dos noivos) e manda para cá. Aqui cada produto preenche um
@@ -32,17 +34,6 @@ const LIST_KEY = 'importar-lista'
 /* ── Leitura do que veio da loja ─────────────────────────────────────── */
 const STORE_SUFFIX = /\s*[|\-–]\s*(Shopee|Mercado ?Livre|Magazine ?Luiza|Magalu|Amazon|Americanas|Casas ?Bahia|KaBuM|Tok ?& ?Stok|Leroy ?Merlin|Tramontina|Camicado)\b.*$/i
 const cleanTitle = (t: string) => t.replace(STORE_SUFFIX, '').replace(/\s+/g, ' ').trim()
-
-/** "R$ 1.299,90", "R$29,90 - R$49,90", "41.99" → texto "1.299,90" pronto para o campo. */
-function priceInput(raw: string) {
-  const token = raw.replace(/\s/g, '').match(/\d[\d.,]*/)?.[0]
-  if (!token) return ''
-  let n: number
-  if (token.includes(',')) n = Number(token.replace(/\./g, '').replace(',', '.'))
-  else if (/\.\d{1,2}$/.test(token)) n = Number(token)
-  else n = Number(token.replace(/\./g, ''))
-  return Number.isFinite(n) && n > 0 ? centsToInput(Math.round(n * 100)) : ''
-}
 
 /** Foto em tamanho cheio (a Shopee manda miniaturas com sufixos). */
 const fullImage = (u: string) => u.replace(/@resize_w\d+[^/?#]*$/, '').replace(/_tn$/, '')
@@ -90,7 +81,7 @@ const load = (): Draft[] => {
 
 /* ── Botão dos favoritos ─────────────────────────────────────────────── */
 const bookmarklet = (origin: string) =>
-  `javascript:(()=>{const q=s=>document.querySelector(s),m=n=>q('meta[property="'+n+'"],meta[name="'+n+'"]')?.content;let p={};try{for(const s of document.querySelectorAll('script[type="application/ld+json"]')){const j=JSON.parse(s.textContent);const a=[].concat(j['@graph']||j);const f=a.find(x=>x&&[].concat(x['@type']).includes('Product'));if(f){p=f;break}}}catch(e){}const o=[].concat(p.offers||[])[0]||{};let price=o.price||o.lowPrice||m('product:price:amount')||'';if(!price){const c=[...document.querySelectorAll('body *')].filter(e=>e.childElementCount===0&&/^\\s*R\\$\\s?\\d/.test(e.textContent)&&e.getBoundingClientRect().width>0).map(e=>[e.textContent,parseFloat(getComputedStyle(e).fontSize)]);c.sort((a,b)=>b[1]-a[1]);price=c[0]?c[0][0]:''}let img=[].concat(p.image||[])[0]||m('og:image')||'';if(typeof img==='object')img=img.url||'';if(!img){const i=[...document.images].filter(i=>i.naturalWidth>=250&&i.getBoundingClientRect().top<innerHeight*1.5).sort((a,b)=>b.naturalWidth*b.naturalHeight-a.naturalWidth*a.naturalHeight)[0];img=i?i.currentSrc||i.src:''}const d={url:location.href,title:(p.name||m('og:title')||document.title||q('h1')?.innerText||'').trim(),price:String(price),image:img};window.open('${origin}/painel/importar#add='+encodeURIComponent(JSON.stringify(d)),'et-lista')})()`
+  `javascript:(()=>{const q=s=>document.querySelector(s),m=n=>q('meta[property="'+n+'"],meta[name="'+n+'"]')?.content;let p={};try{for(const s of document.querySelectorAll('script[type="application/ld+json"]')){const j=JSON.parse(s.textContent);const a=[].concat(j['@graph']||j);const f=a.find(x=>x&&[].concat(x['@type']).includes('Product'));if(f){p=f;break}}}catch(e){}const o=[].concat(p.offers||[])[0]||{};let price=o.price||o.lowPrice||m('product:price:amount')||'';if(!price){const c=[...document.querySelectorAll('body *')].filter(e=>e.childElementCount===0&&/^\\s*R\\$\\s?\\d/.test(e.textContent)&&e.getBoundingClientRect().width>0).map(e=>[e.textContent,parseFloat(getComputedStyle(e).fontSize)]);c.sort((a,b)=>b[1]-a[1]);price=c[0]?c[0][0]:''}let img=[].concat(p.image||[])[0]||m('og:image')||'';if(typeof img==='object')img=img.url||'';if(!img){const i=[...document.images].filter(i=>i.naturalWidth>=250&&i.getBoundingClientRect().top<innerHeight*1.5).sort((a,b)=>b.naturalWidth*b.naturalHeight-a.naturalWidth*a.naturalHeight)[0];img=i?i.currentSrc||i.src:''}const d={url:location.href,title:(p.name||m('og:title')||document.title||q('h1')?.innerText||'').trim(),price:String(price),image:img};const O='${origin}';const toast=t=>{const b=document.createElement('div');b.textContent=t;b.style.cssText='position:fixed;z-index:2147483647;left:0;right:0;top:16px;margin:auto;width:max-content;background:#3a2a22;color:#fff;padding:10px 16px;border-radius:999px;font:600 14px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.3)';document.body.appendChild(b);setTimeout(()=>b.remove(),2600)};const send=()=>window.open(O+'/painel/importar#add='+encodeURIComponent(JSON.stringify(d)),'et-lista');if(window.opener){let ok=0;const h=e=>{if(e.origin!==O)return;ok=1;toast(e.data==='et-wait'?'Confira no Painel: o preço mudou muito':e.data==='et-draft'?'✓ Enviado para o Painel':'✓ Preço conferido')};addEventListener('message',h);try{opener.postMessage({et:d},O)}catch(e){}setTimeout(()=>{removeEventListener('message',h);if(!ok)send()},700)}else send()})()`
 
 export function ImportarPanel() {
   const [list, setList] = useState<GiftListName>(() => (localStorage.getItem(LIST_KEY) as GiftListName) || 'cha')
@@ -100,6 +91,8 @@ export function ImportarPanel() {
   const [error, setError] = useState<string>()
   const [savingAll, setSavingAll] = useState(false)
   const linkRef = useRef<HTMLAnchorElement>(null)
+  /** Conferência de preços ativa: recebe os produtos que chegam (devolve a resposta para a loja). */
+  const checkRef = useRef<CheckHandler | null>(null)
 
   useEffect(() => {
     for (const l of ['cha', 'casamento'] as const) {
@@ -140,6 +133,10 @@ export function ImportarPanel() {
     linkRef.current?.setAttribute('href', bookmarklet(location.origin))
   }, [])
 
+  const registerCheck = useCallback((fn: CheckHandler | null) => {
+    checkRef.current = fn
+  }, [])
+
   const gifts = data[list]?.gifts ?? []
   const rooms = data[list]?.rooms ?? []
 
@@ -165,6 +162,31 @@ export function ImportarPanel() {
     [],
   )
 
+  /** Produto que chegou do favorito: vai para a conferência de preços (se ativa) ou para a fila. */
+  const receive = useCallback(
+    (d: Incoming, from: MessageEventSource | null): Reply => {
+      const r = checkRef.current?.(d, from)
+      if (r) return r
+      addDraft(d)
+      return 'et-draft'
+    },
+    [addDraft],
+  )
+
+  // O favorito, numa aba de loja aberta por este painel, manda o produto por
+  // mensagem (a pessoa continua na loja). Senão chega pelo endereço (#add=).
+  useEffect(() => {
+    window.name = 'et-lista'
+    const onMessage = (e: MessageEvent) => {
+      const d = (e.data as { et?: Incoming } | null)?.et
+      if (!d || typeof d.url !== 'string' || !/^https?:\/\//.test(d.url)) return
+      const reply = receive(d, e.source)
+      ;(e.source as Window | null)?.postMessage(reply, e.origin)
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [receive])
+
   // Produto chegando do botão dos favoritos: #add={...}
   useEffect(() => {
     const read = () => {
@@ -172,7 +194,7 @@ export function ImportarPanel() {
       if (!m) return
       try {
         const d = JSON.parse(decodeURIComponent(m[1]))
-        if (typeof d.url === 'string' && /^https?:\/\//.test(d.url)) addDraft(d)
+        if (typeof d.url === 'string' && /^https?:\/\//.test(d.url)) receive(d, null)
       } catch {
         setError('Não consegui ler o produto. Tente clicar no botão de novo.')
       }
@@ -182,7 +204,7 @@ export function ImportarPanel() {
     read()
     window.addEventListener('hashchange', read)
     return () => window.removeEventListener('hashchange', read)
-  }, [addDraft])
+  }, [receive])
 
   const addPasted = (e: FormEvent) => {
     e.preventDefault()
@@ -234,6 +256,7 @@ export function ImportarPanel() {
       description: d.description.trim().slice(0, 600),
       priceCents,
       externalUrl: d.url,
+      ...(priceCents != null ? { priceChecked: true } : {}),
       ...(image ? { image } : {}),
       ...(rooms.length && (!target || room !== target.roomId) ? { roomId: room } : {}),
     }
@@ -327,6 +350,14 @@ export function ImportarPanel() {
 
       {error && <p className={base.error} role="alert">{error}</p>}
       {!ready && <p className={base.help}>Carregando as listas…</p>}
+
+      {ready && (
+        <PriceCheck
+          gifts={gifts}
+          onGift={g => setData(prev => ({ ...prev, [list]: { ...prev[list]!, gifts: prev[list]!.gifts.map(x => (x.id === g.id ? g : x)) } }))}
+          register={registerCheck}
+        />
+      )}
 
       {drafts.length > 0 && (
         <div className={styles.queueHead}>

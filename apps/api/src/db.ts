@@ -281,6 +281,10 @@ const migrations: string[] = [
     ('convite.verseRef', 'Isaías 41:20'),
     ('convite.closing', 'Esperamos você para celebrar conosco!');
   `,
+  `
+  -- Quando o preço de loja foi conferido pela última vez (fila "Conferir preços").
+  ALTER TABLE gifts ADD COLUMN price_checked_at TEXT;
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }

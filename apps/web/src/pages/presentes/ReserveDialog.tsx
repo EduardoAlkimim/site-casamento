@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { isStorePrice, priceLabel, STORE_PRICE_NOTE } from '../../lib/storePrice'
 import { api, type Gift } from '../../lib/api'
-import { formatBRL } from '../../lib/money'
 import { Sprig } from '../../design-system/botanicals/Botanicals'
 import { Button } from '../../design-system/components/Button'
 import { Field } from '../../design-system/components/Field'
@@ -57,7 +57,8 @@ export function ReserveDialog({ gift, onClose }: { gift: Gift; onClose: (reserve
           <span className={styles.thumb}>{gift.imageUrl ? <img src={gift.imageUrl} alt="" /> : <Sprig strokeWidth={1.2} />}</span>
           <div>
             <h2 id="reserve-title" className={styles.giftName}>{gift.name}</h2>
-            {gift.priceCents != null && <p className={styles.price}>{formatBRL(gift.priceCents)}</p>}
+            {gift.priceCents != null && <p className={styles.price}>{priceLabel(gift)}</p>}
+            {isStorePrice(gift) && gift.priceCents != null && <p className={styles.priceNote}>{STORE_PRICE_NOTE}</p>}
           </div>
         </div>
 

@@ -116,6 +116,12 @@
   color: var(--accent);
 }
 
+.priceNote {
+  margin-top: 2px;
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+}
+
 .body {
   display: grid;
   justify-items: stretch;
