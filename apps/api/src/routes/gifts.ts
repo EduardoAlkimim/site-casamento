@@ -228,6 +228,8 @@ export async function giftRoutes(app: FastifyInstance) {
           const values = entries.map(([, v]) => (typeof v === 'string' ? v.trim() : typeof v === 'boolean' ? Number(v) : v)) as (string | number | null)[]
           db.prepare(`UPDATE gifts SET ${sets} WHERE id = ?`).run(...values, id)
         }
+        // Link trocado à mão: esquece o produto que o robô de preços guardou.
+        if ('externalUrl' in req.body) db.prepare('UPDATE gifts SET store_ref = NULL WHERE id = ?').run(id)
         if ((req.body as { priceChecked?: boolean }).priceChecked) {
           db.prepare("UPDATE gifts SET price_checked_at = datetime('now') WHERE id = ?").run(id)
         }

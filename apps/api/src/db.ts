@@ -285,6 +285,11 @@ const migrations: string[] = [
   -- Quando o preço de loja foi conferido pela última vez (fila "Conferir preços").
   ALTER TABLE gifts ADD COLUMN price_checked_at TEXT;
   `,
+  `
+  -- Produto na loja ("shopee:LOJA.PRODUTO"), guardado quando o link vira link
+  -- de afiliado (curto): o robô de preços continua sabendo qual é o produto.
+  ALTER TABLE gifts ADD COLUMN store_ref TEXT;
+  `,
 ]
 
 const { user_version: current } = db.prepare('PRAGMA user_version').get() as { user_version: number }

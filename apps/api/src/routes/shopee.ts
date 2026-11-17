@@ -67,13 +67,15 @@ async function expand(url: string): Promise<string> {
 
 const isShopee = (url: string) => /shopee\.com\.br|shp\.ee|shope\.ee|s\.shopee/.test(url)
 
-type Row = { id: number; name: string; priceCents: number | null; url: string }
+type Row = { id: number; name: string; priceCents: number | null; url: string; storeRef: string | null }
 type Offer = { itemId: string | number; price?: string; priceMin?: string; priceMax?: string; productName?: string }
 export type ShopeeRun = {
   at: string
   checked: number
   changed: { id: number; name: string; from: number | null; to: number }[]
   unavailable: { id: number; name: string; reason: string }[]
+  /** Links trocados pelo link de afiliado de vocês nesta rodada. */
+  affiliated?: number
   error?: string
 }
 
@@ -89,7 +91,7 @@ export async function runShopee(): Promise<ShopeeRun> {
     const rows = (
       db
         .prepare(
-          `SELECT id, name, price_cents AS priceCents, external_url AS url FROM gifts
+          `SELECT id, name, price_cents AS priceCents, external_url AS url, store_ref AS storeRef FROM gifts
            WHERE external_url IS NOT NULL AND external_url <> '' AND purchase_mode <> 'site' AND status <> 'presenteado'`,
         )
         .all() as Row[]
@@ -97,9 +99,12 @@ export async function runShopee(): Promise<ShopeeRun> {
 
     const setPrice = db.prepare("UPDATE gifts SET price_cents = ?, price_checked_at = datetime('now') WHERE id = ?")
     const touch = db.prepare("UPDATE gifts SET price_checked_at = datetime('now') WHERE id = ?")
+    const setAffiliate = db.prepare('UPDATE gifts SET external_url = ?, store_ref = ? WHERE id = ?')
+    run.affiliated = 0
 
     for (const r of rows) {
-      const ids = shopeeIdsOf(r.url) ?? shopeeIdsOf(await expand(r.url))
+      const ref = r.storeRef?.match(/^shopee:(\d+)\.(\d+)$/)
+      const ids = ref ? { shopId: ref[1], itemId: ref[2] } : (shopeeIdsOf(r.url) ?? shopeeIdsOf(await expand(r.url)))
       if (!ids) {
         run.unavailable.push({ id: r.id, name: r.name, reason: 'não achei o produto no link' })
         continue
@@ -135,6 +140,21 @@ export async function runShopee(): Promise<ShopeeRun> {
         setPrice.run(main, r.id)
         run.changed.push({ id: r.id, name: r.name, from: r.priceCents, to: main })
       }
+      // Link de afiliado de vocês (uma vez por item): quem comprar pelo site gera comissão.
+      if (!r.storeRef) {
+        try {
+          const origin = `https://shopee.com.br/product/${ids.shopId}/${ids.itemId}`
+          const { generateShortLink } = await gql<{ generateShortLink: { shortLink: string } }>(
+            `mutation { generateShortLink(input: { originUrl: "${origin}", subIds: ["listacasamento"] }) { shortLink } }`,
+          )
+          if (/^https:\/\/\S+$/.test(generateShortLink.shortLink)) {
+            setAffiliate.run(generateShortLink.shortLink, `shopee:${ids.shopId}.${ids.itemId}`, r.id)
+            run.affiliated++
+          }
+        } catch {
+          /* fica com o link de antes; tenta de novo na próxima rodada */
+        }
+      }
       await new Promise(res => setTimeout(res, 250)) // sem pressa: a Shopee limita o ritmo
     }
   } catch (err) {
@@ -142,12 +162,13 @@ export async function runShopee(): Promise<ShopeeRun> {
   }
   putSetting('shopee.lastRun', JSON.stringify(run))
 
-  if (run.changed.length || run.unavailable.length || run.error) {
+  if (run.changed.length || run.unavailable.length || run.error || run.affiliated) {
     notify(
       run.error ? '⚠️ Robô de preços da Shopee parou' : `💲 Preços da Shopee: ${run.changed.length} atualizado(s)`,
       run.error ? 'O robô de preços da Shopee não conseguiu conferir' : 'Conferência diária dos preços da Shopee',
       [
         ...(run.error ? ([['Erro', run.error]] as [string, string][]) : []),
+        ...(run.affiliated ? ([['Links de afiliado', `${run.affiliated} link(s) trocados pelo link de afiliado de vocês`]] as [string, string][]) : []),
         ...run.changed.map(c => [c.name, `${c.from != null ? brl(c.from) : 'sem valor'} → ${brl(c.to)}`] as [string, string]),
         ...run.unavailable.map(u => [u.name, `⚠️ ${u.reason}`] as [string, string]),
       ],
