@@ -59,7 +59,7 @@ export function PrecosPanel() {
       <Eyebrow>Presentes</Eyebrow>
       <h2 id="painel-precos" className={base.blockTitle}>Preços automáticos</h2>
       <p className={base.help}>
-        Todo dia de madrugada o site confere sozinho o preço dos itens do Mercado Livre, atualiza o que mudou e manda um e-mail
+        Todo dia de madrugada o site confere sozinho o preço dos itens da Shopee e do Mercado Livre, atualiza o que mudou e manda um e-mail
         para vocês com o resumo. Para os convidados, preço de loja aparece sempre como “≈ valor de referência”.
       </p>
 
@@ -132,13 +132,87 @@ export function PrecosPanel() {
         </div>
       )}
 
-      <div className={styles.check}>
-        <p className={base.formTitle}>Shopee</p>
-        <p className={base.help}>
-          Automático só pela API de afiliados da Shopee, que depende da aprovação da Shopee. Quando a chave sair, o robô passa a
-          conferir os itens da Shopee junto. Até lá, dá para conferir com o favorito em “Adicionar pela loja → Conferir preços”.
-        </p>
-      </div>
+      <ShopeeCard />
     </section>
+  )
+}
+
+/* ── Shopee (Open API de afiliados) ─────────────────────────────────── */
+type ShopeeStatus = { configured: boolean; running: boolean; lastRun: MlRun | null }
+
+function ShopeeCard() {
+  const [st, setSt] = useState<ShopeeStatus | null>(null)
+  const [error, setError] = useState<string>()
+
+  const load = () => api<ShopeeStatus>('/admin/shopee').then(setSt, err => setError(err.message))
+  useEffect(() => {
+    void load()
+  }, [])
+  // Enquanto confere (1–2 min), atualiza sozinho.
+  useEffect(() => {
+    if (!st?.running) return
+    const t = window.setInterval(() => void load(), 4000)
+    return () => window.clearInterval(t)
+  }, [st?.running])
+
+  const runNow = async () => {
+    setError(undefined)
+    try {
+      await api('/admin/shopee/conferir', { body: {} })
+      setSt(s => (s ? { ...s, running: true } : s))
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const run = st?.lastRun
+  return (
+    <div className={styles.check}>
+      <p className={base.formTitle}>Shopee</p>
+      {error && <p className={base.error} role="alert">{error}</p>}
+      {st && !st.configured && (
+        <p className={base.help}>
+          Falta colocar a chave da Open API de afiliados no servidor (painel de afiliados da Shopee → Abrir API: AppID e Senha).
+        </p>
+      )}
+      {st?.configured && (
+        <>
+          <p className={base.saved}>Ligado · confere sozinho todo dia, entre 4h e 7h</p>
+          {st.running ? (
+            <p className={base.help} role="status">Conferindo agora… leva 1 ou 2 minutos.</p>
+          ) : run ? (
+            <>
+              <p className={base.help}>
+                Última conferência: {when(run.at)} · {run.checked} {run.checked === 1 ? 'item conferido' : 'itens conferidos'}
+                {' · '}
+                {run.changed.length ? `${run.changed.length} ${run.changed.length === 1 ? 'preço mudou' : 'preços mudaram'}` : 'nenhum preço mudou'}
+              </p>
+              {run.error && <p className={base.error}>{run.error}</p>}
+              {(run.changed.length > 0 || run.unavailable.length > 0) && (
+                <ul className={styles.log}>
+                  {run.unavailable.map(u => (
+                    <li key={`u${u.id}`}>
+                      <strong>{u.name}</strong>: {u.reason} (vale trocar o link ou esconder)
+                    </li>
+                  ))}
+                  {run.changed.map(c => (
+                    <li key={`c${c.id}`}>
+                      <strong>{c.name}</strong>: {c.from != null ? formatBRL(c.from) : 'sem valor'} → {formatBRL(c.to)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <p className={base.help}>Ainda não rodou.</p>
+          )}
+          <div className={base.formActions}>
+            <Button variant="outline" disabled={st.running} onClick={runNow}>
+              Conferir agora
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

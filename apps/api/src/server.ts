@@ -9,6 +9,7 @@ import { conviteRoutes } from './routes/convite.ts'
 import { giftRoutes } from './routes/gifts.ts'
 import { importRoutes } from './routes/importar.ts'
 import { mercadoLivreRoutes, startMlSchedule } from './routes/mercadolivre.ts'
+import { shopeeRoutes, startShopeeSchedule } from './routes/shopee.ts'
 import { paymentRoutes } from './routes/payments.ts'
 import { publicRoutes } from './routes/public.ts'
 import { uploadRoutes } from './routes/uploads.ts'
@@ -40,6 +41,8 @@ await app.register(contentRoutes, { prefix: '/api' })
 await app.register(conviteRoutes, { prefix: '/api' })
 await app.register(importRoutes, { prefix: '/api' })
 await app.register(mercadoLivreRoutes, { prefix: '/api' })
+await app.register(shopeeRoutes, { prefix: '/api' })
 
 await app.listen({ port: config.port, host: config.host })
 startMlSchedule()
+startShopeeSchedule()

@@ -185,7 +185,7 @@ function Overview() {
       case 'importar':
         return { text: 'Shopee e outras lojas: nome, valor, foto e link num clique' }
       case 'precos':
-        return { text: 'Mercado Livre conferido sozinho todo dia' }
+        return { text: 'Shopee e Mercado Livre conferidos sozinhos todo dia' }
       case 'recebidos':
         return { text: sum.recebidos ? `${formatBRL(sum.recebidoCents)} em ${plural(sum.recebidos, 'presente', 'presentes')}` : 'Nenhum ainda' }
       case 'convite':

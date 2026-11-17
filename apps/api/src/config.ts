@@ -27,4 +27,7 @@ export const config = {
   // dos itens do ML todo dia. Sem as duas, o robô fica desligado.
   mlClientId: process.env.ML_CLIENT_ID ?? '',
   mlClientSecret: process.env.ML_CLIENT_SECRET ?? '',
+  // Shopee (Open API de afiliados): confere os preços dos itens da Shopee todo dia.
+  shopeeAppId: process.env.SHOPEE_APP_ID ?? '',
+  shopeeSecret: process.env.SHOPEE_SECRET ?? '',
 }
